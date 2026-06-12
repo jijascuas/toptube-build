@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TopTube Showcase</title>
+  <meta name="description" content="Discover creators and showcase your social channels on TopTube." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header id="main-header">
+    <div class="header-left">
+      <a href="#" class="logo" id="logo-home">
+        <i class="fa-solid fa-layer-group"></i>
+        <span>TopTube</span>
+      </a>
+      <button id="my-profile-btn-header" class="btn-upload hidden">
+        <i class="fa-solid fa-video"></i> Upload videos
+      </button>
+    </div>
+    <div class="header-center">
+      <div class="search-wrap">
+        <input type="text" id="search-input" placeholder="Search creators..." autocomplete="off" />
+        <button id="search-btn" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
+      </div>
+      <button id="favorites-btn-header" class="star-btn" title="Favorites">
+        <i class="fa-solid fa-star"></i>
+      </button>
+    </div>
+    <div class="header-right">
+      <button id="auth-btn" class="btn-primary">
+        <i class="fa-brands fa-google"></i> Sign in with Google
+      </button>
+      <div id="user-menu" class="hidden">
+        <a href="#" id="privacy-policy-btn" style="color: #a1a1aa; font-size: 0.9rem; text-decoration: underline; margin-right: 15px;">Privacy Policy</a>
+        <img id="user-avatar-header" src="" alt="Avatar" class="avatar-small"/>
+        <button id="logout-btn" title="Sign Out"><i class="fa-solid fa-sign-out-alt"></i></button>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- MAIN -->
+    <main id="main-content">
+      <div id="current-view-header">
+        <div class="view-info">
+          <span id="view-icon"><i class="fa-solid fa-users"></i></span>
+          <h1 id="view-title">All Creators</h1>
+        </div>
+      </div>
+
+      <!-- PROFILES GRID -->
+      <div id="profiles-grid">
+        <!-- Dynamic content goes here -->
+      </div>
+      
+      <!-- EMPTY STATE -->
+      <div id="empty-state" class="hidden">
+        <i class="fa-regular fa-folder-open"></i>
+        <p>No profiles found.</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- ============== MODALS ============== -->
+
+  <!-- MY PROFILE MODAL -->
+  <div id="profile-setup-modal" class="modal-overlay hidden">
+    <div class="modal-box profile-modal-box">
+      <button class="modal-close" id="profile-close"><i class="fa-solid fa-xmark"></i></button>
+      <div class="modal-header">
+        <i class="fa-solid fa-id-card"></i>
+        <h2>Edit Profile & YouTube Links</h2>
+      </div>
+      <form id="profile-form">
+        <div class="input-group">
+          <label for="profile-nickname">Nickname / Username</label>
+          <input type="text" id="profile-nickname" placeholder="e.g. Creator123" maxlength="20" required />
+        </div>
+        <div class="input-group" style="display: none;">
+          <label>Add Platform Links</label>
+          <select id="link-platform-select">
+            <!-- Populated via JS -->
+          </select>
+        </div>
+        <div class="input-group">
+          <input type="url" id="link-url-input" placeholder="https://..." />
+          <button type="button" id="add-link-btn" class="btn-secondary">Add Link</button>
+        </div>
+        <div id="link-error-msg" class="error-msg hidden"></div>
+        
+        <!-- Added Links List -->
+        <ul id="added-links-list" class="added-links"></ul>
+
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary">Publish</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- AGE VERIFICATION MODAL -->
+  <div id="age-modal" class="modal-overlay hidden">
+    <div class="modal-box age-modal-box">
+      <div class="age-warning-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      <h2>Adults Only – 18+</h2>
+      <p>This link contains explicit adult content. Are you 18 years of age or older?</p>
+      <div class="modal-actions">
+        <button id="age-confirm-btn" class="btn-danger">YES</button>
+        <button id="age-cancel-btn" class="btn-secondary">NO</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- EMBEDDED VIEWER MODAL -->
+  <div id="embed-modal" class="modal-overlay hidden">
+    <div class="modal-box embed-modal-box">
+      <button class="modal-close" id="embed-close"><i class="fa-solid fa-xmark"></i></button>
+      <div id="embed-container">
+        <!-- iframe will be injected here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- PRIVACY POLICY MODAL -->
+  <div id="privacy-modal" class="modal-overlay hidden">
+    <div class="modal-box" style="max-width: 600px;">
+      <button class="modal-close" id="privacy-close"><i class="fa-solid fa-xmark"></i></button>
+      <div class="modal-header">
+        <i class="fa-solid fa-shield-halved"></i>
+        <h2>Privacy Policy</h2>
+      </div>
+      <div style="color: #94a3b8; line-height: 1.6; max-height: 60vh; overflow-y: auto; padding-right: 10px; margin-top: 20px;">
+        <p>Your privacy is important to us. It is TopTube's policy to respect your privacy regarding any information we may collect from you across our website.</p>
+        <br>
+        <p>We only ask for personal information when we truly need it to provide a service to you. We collect it by fair and lawful means, with your knowledge and consent.</p>
+        <br>
+        <p>We don't share any personally identifying information publicly or with third-parties, except when required to by law.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase App (the core Firebase SDK) is always required and must be listed first -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <!-- Add Firebase Auth -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <!-- Add Firebase Firestore for real DB logic -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyC1mcqcucownH27SdvLxdYfPJhbdGKbSAI",
+      authDomain: "toptube-jijascuas.firebaseapp.com",
+      projectId: "toptube-jijascuas",
+      storageBucket: "toptube-jijascuas.firebasestorage.app",
+      messagingSenderId: "390668245833",
+      appId: "1:390668245833:web:85c451eea5604224419898",
+      measurementId: "G-J20D2N5R14"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
+
+  <script src="app.js"></script>
+</body>
+</html>

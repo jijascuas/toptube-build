@@ -1,0 +1,6 @@
+{
+  "appId": "com.toptube.app",
+  "appName": "TopTube",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
