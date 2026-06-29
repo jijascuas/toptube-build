@@ -3,6 +3,66 @@
  * Real Firebase & Embedded Viewer Integration
  */
 
+// --- ADMOB LOGIC ---
+let admobInitialized = false;
+let reelsViewed = 0;
+
+const BANNER_AD_ID = 'ca-app-pub-4159023709825629/7216545964';
+const INTERSTITIAL_AD_ID = 'ca-app-pub-4159023709825629/4934419013';
+
+async function initAdMob() {
+  if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) {
+    try {
+      const { AdMob } = window.Capacitor.Plugins;
+      await AdMob.initialize({});
+      admobInitialized = true;
+      console.log('AdMob Initialized');
+      showBannerAd();
+    } catch (e) {
+      console.error('AdMob init error', e);
+    }
+  }
+}
+
+async function showBannerAd() {
+  if (!admobInitialized) return;
+  const { AdMob } = window.Capacitor.Plugins;
+  try {
+    await AdMob.showBanner({
+      adId: BANNER_AD_ID,
+      adSize: 'BANNER',
+      position: 'BOTTOM',
+      margin: 0,
+      isTesting: false
+    });
+  } catch (e) {
+    console.error('Show banner error', e);
+  }
+}
+
+async function hideBannerAd() {
+  if (!admobInitialized) return;
+  try {
+    const { AdMob } = window.Capacitor.Plugins;
+    await AdMob.hideBanner();
+  } catch (e) {
+    console.error('Hide banner error', e);
+  }
+}
+
+async function showInterstitialAd() {
+  if (!admobInitialized) return;
+  try {
+    const { AdMob } = window.Capacitor.Plugins;
+    await AdMob.prepareInterstitial({ adId: INTERSTITIAL_AD_ID, isTesting: false });
+    await AdMob.showInterstitial();
+  } catch (e) {
+    console.error('Show interstitial error', e);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', initAdMob);
+
 // --- DATA STRUCTURES ---
 const rawPlatforms = [
   { id: 'youtube', name: 'YouTube', icon: 'fa-brands fa-youtube', color: '#ff0000', domain: 'youtube.com', embeddable: true }
@@ -120,7 +180,18 @@ function fetchProfiles() {
       if (!p.favoritedBy) p.favoritedBy = [];
       if (typeof p.favoritesCount !== 'number') p.favoritesCount = p.favoritedBy.length;
     });
-    renderProfiles();
+    if (isSwipeMode) {
+      profilesGrid.classList.add('hidden');
+      if (swipeFeed) swipeFeed.classList.remove('hidden');
+      viewTitle.textContent = "Swipe Feed";
+      viewIcon.innerHTML = '<i class="fa-solid fa-mobile-screen"></i>';
+      renderSwipeFeed();
+    } else if (isLeaderboardMode) {
+      const sorted = [...profiles].sort((a,b) => (b.votes || 0) - (a.votes || 0));
+      renderProfiles(sorted);
+    } else {
+      renderProfiles();
+    }
   });
 }
 
@@ -153,10 +224,13 @@ function getYouTubeId(url) {
 }
 
 // --- PROFILE RENDERING ---
-function renderProfiles() {
+function renderProfiles(profilesList = profiles) {
   profilesGrid.innerHTML = '';
   
-  let filtered = [...profiles].sort((a, b) => b.favoritesCount - a.favoritesCount);
+  let filtered = [...profilesList];
+  if (!isLeaderboardMode) {
+    filtered.sort((a, b) => b.favoritesCount - a.favoritesCount);
+  }
   
   if (isViewingFavorites && currentUser) {
     filtered = filtered.filter(p => p.favoritedBy && p.favoritedBy.includes(currentUser.id));
@@ -205,8 +279,16 @@ function renderProfiles() {
           <button class="card-favorite-btn ${isFav ? 'favorited' : ''}" data-id="${p.id}" title="Add to favorites">
             <i class="fa-solid fa-star"></i>
           </button>
-          <img src="${p.avatar}" alt="${p.nickname}" class="row-avatar" />
-          <div class="row-name">${p.nickname}</div>
+          <div class="avatar-container ${p.referrals > 3 ? 'badge-golden' : ''}">
+            <img src="${p.avatar}" alt="${p.nickname}" class="row-avatar" />
+            ${p.referrals > 3 ? '<div class="badge-icon"><i class="fa-solid fa-check"></i></div>' : ''}
+          </div>
+          <div style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 5px;">
+            <div class="row-name">${p.nickname}</div>
+            <button class="vote-btn-card" style="position: static; background: rgba(99, 102, 241, 0.5); padding: 3px 8px; font-size: 0.8rem;" onclick="openShareModal('${p.id}')">
+              <i class="fa-solid fa-share-nodes"></i> Share
+            </button>
+          </div>
         </div>
         <div class="row-links-container">
           ${linksHTML}
@@ -471,3 +553,317 @@ privacyClose.addEventListener('click', () => {
 });
 
 init();
+
+// --- VIRAL FEATURES: TIKTOK SWIPE, GAMIFICATION, REFERRALS & SHARING ---
+
+// DOM Elements
+const swipeFeed = document.getElementById('swipe-feed');
+const tiktokModeBtnHeader = document.getElementById('tiktok-mode-btn-header');
+const leaderboardBtnHeader = document.getElementById('leaderboard-btn-header');
+const shareModal = document.getElementById('share-modal');
+const shareCloseBtn = document.getElementById('share-close');
+const shareLinkInput = document.getElementById('share-link-input');
+const shareWidgetInput = document.getElementById('share-widget-input');
+const copyLinkBtn = document.getElementById('copy-link-btn');
+const copyWidgetBtn = document.getElementById('copy-widget-btn');
+
+let isSwipeMode = true;
+let isLeaderboardMode = false;
+
+// 1. Referral & Widget Routing (Run on load)
+window.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  
+  // Referral Check
+  const refId = urlParams.get('ref');
+  if (refId) {
+    sessionStorage.setItem('pendingReferral', refId);
+  }
+  
+  // Widget / Specific User Check
+  const userId = urlParams.get('user');
+  if (userId) {
+    document.body.classList.add('widget-mode');
+    setTimeout(() => loadSpecificUserProfile(userId), 1000);
+  }
+});
+
+function loadSpecificUserProfile(userId) {
+  const profile = profiles.find(p => p.id === userId);
+  if (profile) {
+    renderProfiles([profile]);
+  } else {
+    db.collection('profiles').doc(userId).get().then(doc => {
+      if(doc.exists) {
+        renderProfiles([{id: doc.id, ...doc.data()}]);
+      }
+    });
+  }
+}
+
+// Intercept Auth to process referrals
+auth.onAuthStateChanged(user => {
+  if (user) {
+    const refId = sessionStorage.getItem('pendingReferral');
+    if (refId && refId !== user.uid) {
+      // Add referral point to referrer
+      db.collection('profiles').doc(refId).update({
+        referrals: firebase.firestore.FieldValue.increment(1)
+      }).catch(console.error);
+      sessionStorage.removeItem('pendingReferral');
+    }
+  }
+});
+
+// 2. Sharing & Widgets
+window.openShareModal = function(userId) {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('ref');
+  url.searchParams.delete('user');
+  
+  const shareUrl = `${url.origin}${url.pathname}?ref=${userId}`;
+  const widgetUrl = `${url.origin}${url.pathname}?user=${userId}`;
+  
+  shareLinkInput.value = shareUrl;
+  shareWidgetInput.value = `<iframe src="${widgetUrl}" width="350" height="400" frameborder="0"></iframe>`;
+  
+  shareModal.classList.remove('hidden');
+};
+
+if(shareCloseBtn) shareCloseBtn.addEventListener('click', () => shareModal.classList.add('hidden'));
+if(copyLinkBtn) copyLinkBtn.addEventListener('click', () => {
+  navigator.clipboard.writeText(shareLinkInput.value);
+  alert("Link copied!");
+});
+if(copyWidgetBtn) copyWidgetBtn.addEventListener('click', () => {
+  navigator.clipboard.writeText(shareWidgetInput.value);
+  alert("Widget HTML copied!");
+});
+
+// 3. Voting & Gamification
+window.voteCreator = function(creatorId, e) {
+  if (e) e.stopPropagation();
+  if (!currentUser) {
+    alert("Please sign in to vote!");
+    return;
+  }
+  db.collection('profiles').doc(creatorId).update({
+    votes: firebase.firestore.FieldValue.increment(1)
+  }).then(() => {
+    fetchProfiles(); // Refresh
+  }).catch(err => {
+    console.error("Error voting", err);
+  });
+};
+
+if(leaderboardBtnHeader) leaderboardBtnHeader.addEventListener('click', () => {
+  isLeaderboardMode = !isLeaderboardMode;
+  isSwipeMode = false;
+  if(swipeFeed) swipeFeed.classList.add('hidden');
+  profilesGrid.classList.remove('hidden');
+  
+  if (isLeaderboardMode) {
+    viewTitle.textContent = "Leaderboard 🏆";
+    viewIcon.innerHTML = '<i class="fa-solid fa-trophy"></i>';
+    const sorted = [...profiles].sort((a,b) => (b.votes || 0) - (a.votes || 0));
+    renderProfiles(sorted);
+  } else {
+    viewTitle.textContent = "All Creators";
+    viewIcon.innerHTML = '<i class="fa-solid fa-users"></i>';
+    renderProfiles(profiles);
+  }
+});
+
+// 4. TikTok Swipe Feed
+if(tiktokModeBtnHeader) tiktokModeBtnHeader.addEventListener('click', () => {
+  isSwipeMode = !isSwipeMode;
+  isLeaderboardMode = false;
+  
+  if (isSwipeMode) {
+    profilesGrid.classList.add('hidden');
+    swipeFeed.classList.remove('hidden');
+    viewTitle.textContent = "Swipe Feed";
+    viewIcon.innerHTML = '<i class="fa-solid fa-mobile-screen"></i>';
+    renderSwipeFeed();
+  } else {
+    swipeFeed.classList.add('hidden');
+    profilesGrid.classList.remove('hidden');
+    viewTitle.textContent = "All Creators";
+    viewIcon.innerHTML = '<i class="fa-solid fa-users"></i>';
+    renderProfiles(profiles);
+  }
+});
+
+window.likeVideoInSwipe = function(profileId, url, btnElement) {
+  if (!currentUser) {
+    alert("Sign in with Google to like videos.");
+    return;
+  }
+  
+  // Optimistically update the UI
+  let span = btnElement.querySelector('span');
+  let i = btnElement.querySelector('i');
+  let count = parseInt(span.textContent) || 0;
+  if(i.style.color === 'rgb(239, 68, 68)' || i.style.color === '#ef4444') { 
+    i.style.color = 'white';
+    span.textContent = count - 1;
+  } else {
+    i.style.color = '#ef4444';
+    span.textContent = count + 1;
+  }
+
+  toggleVideoLike(profileId, url);
+};
+
+function renderSwipeFeed() {
+  if(!swipeFeed) return;
+  swipeFeed.innerHTML = '';
+  let allVideos = [];
+  profiles.forEach(p => {
+    if(p.links) {
+      p.links.forEach(l => {
+        if(l.platformId === 'youtube') {
+           allVideos.push({ profile: p, url: l.url, link: l });
+        }
+      });
+    }
+  });
+  
+  // Shuffle randomly
+  allVideos.sort(() => Math.random() - 0.5);
+
+  if (allVideos.length === 0) {
+    swipeFeed.innerHTML = '<div style="color:white; margin-top:20px; text-align:center;">No videos found.</div>';
+    return;
+  }
+
+  // Track global mute state - starts muted to allow autoplay, user can unmute
+  window._swipeMuted = true;
+
+  allVideos.forEach((v, index) => {
+    let videoId = '';
+    if (v.url.includes('watch?v=')) {
+      videoId = v.url.split('watch?v=')[1].split('&')[0];
+    } else if (v.url.includes('youtu.be/')) {
+      videoId = v.url.split('youtu.be/')[1].split('?')[0];
+    }
+    if (!videoId) return;
+
+    // All start muted+autoplay so the browser allows it; user can unmute anytime
+    const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&enablejsapi=1&rel=0&modestbranding=1`;
+
+    const likedBy = v.link.likedBy || [];
+    const isLiked = currentUser && likedBy.includes(currentUser.id);
+    const likeCount = likedBy.length;
+
+    const item = document.createElement('div');
+    item.className = 'swipe-item';
+    item.dataset.videoid = videoId;
+
+    item.innerHTML = `
+      <iframe 
+        id="swipe-iframe-${index}"
+        src="${embedUrl}" 
+        allowfullscreen 
+        allow="autoplay; encrypted-media"
+        style="width:100%;height:100%;border:none;pointer-events:all;"
+      ></iframe>
+      <div class="swipe-overlay-info">
+        <h3 style="margin:0 0 4px 0; font-size:1.2rem; text-shadow:0 1px 4px rgba(0,0,0,0.8);">@${v.profile.nickname || 'Unknown'}</h3>
+      </div>
+      <div class="swipe-actions">
+        <div class="action-btn" id="unmute-btn-${index}" onclick="toggleSwipeMute(${index})" title="Tap to unmute">
+          <i class="fa-solid fa-volume-xmark" style="color:#facc15;"></i>
+          <span style="font-size:0.7rem;">Sonido</span>
+        </div>
+        <div class="action-btn" onclick="likeVideoInSwipe('${v.profile.id}', '${v.url}', this)">
+          <i class="fa-solid fa-heart" style="color:${isLiked ? '#ef4444' : 'white'};"></i>
+          <span>${likeCount}</span>
+        </div>
+        <div class="action-btn" onclick="openShareModal('${v.profile.id}')">
+          <i class="fa-solid fa-share"></i>
+          <span>Share</span>
+        </div>
+      </div>
+    `;
+    swipeFeed.appendChild(item);
+  });
+
+  setupSwipeAutoplay();
+}
+
+// Toggle mute/unmute for a specific video and update global state
+window.toggleSwipeMute = function(index) {
+  window._swipeMuted = !window._swipeMuted;
+  const iframe = document.getElementById(`swipe-iframe-${index}`);
+  const btn = document.getElementById(`unmute-btn-${index}`);
+  
+  if (iframe) {
+    if (window._swipeMuted) {
+      iframe.contentWindow.postMessage('{"event":"command","func":"mute","args":""}', '*');
+      if(btn) btn.querySelector('i').className = 'fa-solid fa-volume-xmark';
+    } else {
+      iframe.contentWindow.postMessage('{"event":"command","func":"unMute","args":""}', '*');
+      iframe.contentWindow.postMessage('{"event":"command","func":"setVolume","args":[100]}', '*');
+      if(btn) btn.querySelector('i').className = 'fa-solid fa-volume-high';
+      if(btn) btn.querySelector('i').style.color = 'white';
+    }
+  }
+
+  // Apply same mute state to all other visible iframes
+  document.querySelectorAll('.swipe-item iframe').forEach(f => {
+    if(f.id !== `swipe-iframe-${index}`) {
+      if (window._swipeMuted) {
+        f.contentWindow.postMessage('{"event":"command","func":"mute","args":""}', '*');
+      } else {
+        f.contentWindow.postMessage('{"event":"command","func":"unMute","args":""}', '*');
+        f.contentWindow.postMessage('{"event":"command","func":"setVolume","args":[100]}', '*');
+      }
+    }
+  });
+
+  // Update all unmute button icons
+  document.querySelectorAll('[id^="unmute-btn-"]').forEach(b => {
+    const i = b.querySelector('i');
+    if(i) {
+      i.className = window._swipeMuted ? 'fa-solid fa-volume-xmark' : 'fa-solid fa-volume-high';
+      i.style.color = window._swipeMuted ? '#facc15' : 'white';
+    }
+  });
+};
+
+function setupSwipeAutoplay() {
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      const iframe = entry.target.querySelector('iframe');
+      if (!iframe) return;
+      if (entry.isIntersecting) {
+        // Play the video that scrolled into view
+        iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+        // Respect the current mute/unmute state
+        if (!window._swipeMuted) {
+          setTimeout(() => {
+            iframe.contentWindow.postMessage('{"event":"command","func":"unMute","args":""}', '*');
+            iframe.contentWindow.postMessage('{"event":"command","func":"setVolume","args":[100]}', '*');
+          }, 500);
+        }
+        // Update unmute btn icon for this item
+        const btn = entry.target.querySelector('[id^="unmute-btn-"]');
+        if(btn) {
+          btn.querySelector('i').className = window._swipeMuted ? 'fa-solid fa-volume-xmark' : 'fa-solid fa-volume-high';
+        }
+      } else {
+        // Pause the video that scrolled out
+        iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+      }
+    });
+  }, {
+    root: swipeFeed,
+    rootMargin: '0px',
+    threshold: 0.65
+  });
+
+  document.querySelectorAll('.swipe-item').forEach(item => {
+    observer.observe(item);
+  });
+}

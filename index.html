@@ -16,8 +16,7 @@
   <header id="main-header">
     <div class="header-left">
       <a href="#" class="logo" id="logo-home">
-        <i class="fa-solid fa-layer-group"></i>
-        <span>TopTube</span>
+        <img src="logo.png" alt="TopTube Logo">
       </a>
       <button id="my-profile-btn-header" class="btn-upload hidden">
         <i class="fa-solid fa-video"></i> Upload videos
@@ -28,8 +27,14 @@
         <input type="text" id="search-input" placeholder="Search creators..." autocomplete="off" />
         <button id="search-btn" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
       </div>
+      <button id="tiktok-mode-btn-header" class="star-btn" title="Shorts Feed">
+        <i class="fa-solid fa-mobile-screen"></i>
+      </button>
       <button id="favorites-btn-header" class="star-btn" title="Favorites">
         <i class="fa-solid fa-star"></i>
+      </button>
+      <button id="leaderboard-btn-header" class="star-btn" title="Leaderboard">
+        <i class="fa-solid fa-trophy"></i>
       </button>
     </div>
     <div class="header-right">
@@ -37,6 +42,7 @@
         <i class="fa-brands fa-google"></i> Sign in with Google
       </button>
       <div id="user-menu" class="hidden">
+        <a href="https://lnk.bio/jijascuasgames" target="_blank" style="background-color: purple; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; margin-right: 15px; font-size: 0.9rem; font-weight: bold;">jijascuasgames</a>
         <a href="#" id="privacy-policy-btn" style="color: #a1a1aa; font-size: 0.9rem; text-decoration: underline; margin-right: 15px;">Privacy Policy</a>
         <img id="user-avatar-header" src="" alt="Avatar" class="avatar-small"/>
         <button id="logout-btn" title="Sign Out"><i class="fa-solid fa-sign-out-alt"></i></button>
@@ -57,6 +63,11 @@
       <!-- PROFILES GRID -->
       <div id="profiles-grid">
         <!-- Dynamic content goes here -->
+      </div>
+      
+      <!-- SWIPE FEED (TIKTOK MODE) -->
+      <div id="swipe-feed" class="hidden">
+        <!-- Vertical scroll videos -->
       </div>
       
       <!-- EMPTY STATE -->
@@ -123,6 +134,29 @@
       <button class="modal-close" id="embed-close"><i class="fa-solid fa-xmark"></i></button>
       <div id="embed-container">
         <!-- iframe will be injected here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- SHARE / WIDGET MODAL -->
+  <div id="share-modal" class="modal-overlay hidden">
+    <div class="modal-box share-modal-box">
+      <button class="modal-close" id="share-close"><i class="fa-solid fa-xmark"></i></button>
+      <div class="modal-header">
+        <i class="fa-solid fa-share-nodes"></i>
+        <h2>Share Profile</h2>
+      </div>
+      <div class="share-content">
+        <p>Share your profile link to get referrals!</p>
+        <div class="input-group">
+          <input type="text" id="share-link-input" readonly />
+          <button id="copy-link-btn" class="btn-primary">Copy Link</button>
+        </div>
+        <p>Or embed your widget:</p>
+        <div class="input-group">
+          <textarea id="share-widget-input" readonly rows="3"></textarea>
+          <button id="copy-widget-btn" class="btn-primary">Copy HTML</button>
+        </div>
       </div>
     </div>
   </div>

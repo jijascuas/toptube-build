@@ -68,15 +68,14 @@ body {
 
 .logo {
   text-decoration: none;
-  color: var(--text-primary);
-  font-size: 1.5rem;
-  font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: linear-gradient(90deg, #818cf8, #c084fc);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+}
+
+.logo img {
+  height: 40px;
+  width: auto;
+  object-fit: contain;
 }
 
 .search-wrap {
@@ -753,4 +752,164 @@ body {
   .search-wrap {
     width: 200px;
   }
+}
+
+/* ================= VIRAL FEATURES & TIKTOK SWIPE ================= */
+
+/* Swipe Feed */
+#swipe-feed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: calc(100vh - 70px);
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  background: #000;
+  position: absolute;
+  top: 70px;
+  left: 0;
+  z-index: 100;
+}
+
+#swipe-feed.hidden {
+  display: none !important;
+}
+
+.swipe-item {
+  width: 100%;
+  max-width: 500px;
+  height: 100%;
+  min-height: calc(100vh - 70px);
+  scroll-snap-align: start;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #111;
+  border-bottom: 1px solid #333;
+}
+
+.swipe-item iframe {
+  width: 100%;
+  height: 100%;
+  max-height: 800px;
+  border: none;
+  pointer-events: auto; /* Let user interact */
+}
+
+.swipe-overlay-info {
+  position: absolute;
+  bottom: 80px;
+  left: 20px;
+  right: 60px;
+  z-index: 10;
+  background: rgba(0,0,0,0.5);
+  padding: 15px;
+  border-radius: 12px;
+  backdrop-filter: blur(5px);
+}
+
+.swipe-actions {
+  position: absolute;
+  bottom: 80px;
+  right: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  z-index: 10;
+}
+
+.action-btn {
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: white;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  backdrop-filter: blur(4px);
+}
+.action-btn:hover {
+  transform: scale(1.1);
+  background: var(--accent-color);
+}
+.action-btn i { font-size: 1.2rem; }
+.action-btn span { font-size: 0.7rem; margin-top: 2px; }
+
+/* Gamification / Leaderboard */
+.vote-btn-card {
+  position: absolute;
+  top: 15px;
+  left: 15px;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 5px 10px;
+  border-radius: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.9rem;
+  transition: all 0.3s;
+}
+.vote-btn-card:hover {
+  background: var(--accent-color);
+  transform: scale(1.05);
+}
+
+/* Badges */
+.badge-golden {
+  border: 2px solid gold;
+  box-shadow: 0 0 10px gold;
+}
+.badge-icon {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  background: gold;
+  color: #000;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 10px;
+}
+.avatar-container {
+  position: relative;
+  display: inline-block;
+}
+
+/* Share Modal */
+.share-content {
+  text-align: center;
+  margin-top: 15px;
+}
+.share-content p { margin: 10px 0; color: var(--text-secondary); }
+
+/* Embedded Widget View specific rules */
+body.widget-mode {
+  background: transparent !important;
+  min-height: auto;
+  padding: 10px;
+}
+body.widget-mode #main-header, body.widget-mode #current-view-header {
+  display: none !important;
+}
+body.widget-mode #profiles-grid {
+  grid-template-columns: 1fr;
+  padding: 0;
+}
+body.widget-mode .profile-card {
+  margin: 0;
+  transform: none !important;
 }
