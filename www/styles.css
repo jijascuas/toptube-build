@@ -526,7 +526,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 140px;
+  min-width: 170px;
   position: relative;
 }
 
@@ -543,6 +543,9 @@ body {
   font-size: 1rem;
   font-weight: 600;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
 }
 
 .row-user-info .card-favorite-btn {

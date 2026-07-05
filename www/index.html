@@ -15,35 +15,7 @@
 </head>
 <body>
 
-  <!-- HEADER (Top bar) -->
-  <header id="main-header">
-    <div class="header-left">
-      <a href="#" class="logo" id="logo-home">
-        <img src="logo.png" alt="TopTube Logo">
-      </a>
-    </div>
-    <div class="header-center">
-      <!-- These appear only when NOT in swipe mode -->
-      <div class="search-wrap desktop-only" id="search-wrap">
-        <input type="text" id="search-input" placeholder="Search creators..." autocomplete="off" />
-        <button id="search-btn" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
-      </div>
-    </div>
-    <div class="header-right">
-      <a href="https://lnk.bio/jijascuasgames" target="_blank" class="jijascuas-link desktop-only" id="jijascuas-link">jijascuasgames</a>
-      <a href="privacy.html" target="_blank" class="privacy-link desktop-only" id="privacy-policy-btn-header">Privacy Policy</a>
-      <button id="auth-btn" class="btn-google desktop-only">
-        <i class="fa-brands fa-google"></i> Sign in with Google
-      </button>
-      <div id="user-menu" class="hidden">
-        <button id="my-profile-btn-header" class="btn-upload hidden">
-          <i class="fa-solid fa-video"></i> Upload
-        </button>
-        <img id="user-avatar-header" src="" alt="Avatar" class="avatar-small"/>
-        <button id="logout-btn" title="Sign Out"><i class="fa-solid fa-sign-out-alt"></i></button>
-      </div>
-    </div>
-  </header>
+  <!-- HEADER (Removed as per user request, moved to bottom nav) -->
 
   <div class="layout">
     <!-- MAIN -->
@@ -166,37 +138,6 @@
   </div>
 
   <!-- EMBEDDED VIEWER MODAL -->
-  <div id="embed-modal" class="modal-overlay hidden">
-    <div class="modal-box embed-modal-box">
-      <button class="modal-close" id="embed-close"><i class="fa-solid fa-xmark"></i></button>
-      <div id="embed-container">
-        <!-- iframe will be injected here -->
-      </div>
-    </div>
-  </div>
-
-  <!-- SHARE / WIDGET MODAL -->
-  <div id="share-modal" class="modal-overlay hidden">
-    <div class="modal-box share-modal-box">
-      <button class="modal-close" id="share-close"><i class="fa-solid fa-xmark"></i></button>
-      <div class="modal-header">
-        <i class="fa-solid fa-share-nodes"></i>
-        <h2>Share Profile</h2>
-      </div>
-      <div class="share-content">
-        <p>Share your profile link to get referrals!</p>
-        <div class="input-group">
-          <input type="text" id="share-link-input" readonly />
-          <button id="copy-link-btn" class="btn-primary">Copy Link</button>
-        </div>
-        <p>Or embed your widget:</p>
-        <div class="input-group">
-          <textarea id="share-widget-input" readonly rows="3"></textarea>
-          <button id="copy-widget-btn" class="btn-primary">Copy HTML</button>
-        </div>
-      </div>
-    </div>
-  </div>
 
   <!-- PRIVACY POLICY MODAL (fallback for in-app) -->
   <div id="privacy-modal" class="modal-overlay hidden">

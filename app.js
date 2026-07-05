@@ -447,9 +447,7 @@ function renderProfiles(profilesList = profiles) {
           </div>
           <div style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 5px;">
             <div class="row-name">${p.nickname}</div>
-            <button class="vote-btn-card" style="position: static; background: rgba(99, 102, 241, 0.5); padding: 3px 8px; font-size: 0.8rem;" onclick="openShareModal('${p.id}')">
-              <i class="fa-solid fa-share-nodes"></i> Share
-            </button>
+
           </div>
         </div>
         <div class="row-links-container">
@@ -726,12 +724,7 @@ init();
 const swipeFeed = document.getElementById('swipe-feed');
 const tiktokModeBtnHeader = document.getElementById('tiktok-mode-btn-header');
 const leaderboardBtnHeader = document.getElementById('leaderboard-btn-header');
-const shareModal = document.getElementById('share-modal');
-const shareCloseBtn = document.getElementById('share-close');
-const shareLinkInput = document.getElementById('share-link-input');
-const shareWidgetInput = document.getElementById('share-widget-input');
-const copyLinkBtn = document.getElementById('copy-link-btn');
-const copyWidgetBtn = document.getElementById('copy-widget-btn');
+
 
 let isSwipeMode = true;
 let isLeaderboardMode = false;
@@ -776,31 +769,6 @@ auth.onAuthStateChanged(user => {
       sessionStorage.removeItem('pendingReferral');
     }
   }
-});
-
-// 2. Sharing & Widgets
-window.openShareModal = function(userId) {
-  const url = new URL(window.location.href);
-  url.searchParams.delete('ref');
-  url.searchParams.delete('user');
-  
-  const shareUrl = `${url.origin}${url.pathname}?ref=${userId}`;
-  const widgetUrl = `${url.origin}${url.pathname}?user=${userId}`;
-  
-  shareLinkInput.value = shareUrl;
-  shareWidgetInput.value = `<iframe src="${widgetUrl}" width="350" height="400" frameborder="0"></iframe>`;
-  
-  shareModal.classList.remove('hidden');
-};
-
-if(shareCloseBtn) shareCloseBtn.addEventListener('click', () => shareModal.classList.add('hidden'));
-if(copyLinkBtn) copyLinkBtn.addEventListener('click', () => {
-  navigator.clipboard.writeText(shareLinkInput.value);
-  alert("Link copied!");
-});
-if(copyWidgetBtn) copyWidgetBtn.addEventListener('click', () => {
-  navigator.clipboard.writeText(shareWidgetInput.value);
-  alert("Widget HTML copied!");
 });
 
 // 3. Voting & Gamification
@@ -945,10 +913,7 @@ function renderSwipeFeed() {
           <i class="fa-solid fa-heart" style="color:${isLiked ? '#ef4444' : 'white'};"></i>
           <span>${likeCount}</span>
         </div>
-        <div class="action-btn" onclick="openShareModal('${v.profile.id}')">
-          <i class="fa-solid fa-share"></i>
-          <span>Share</span>
-        </div>
+
       </div>
     `;
     swipeFeed.appendChild(item);
