@@ -1,7 +1,109 @@
 /**
  * TopTube - Social Directory
- * Real Firebase & Embedded Viewer Integration
+ * Native Android Optimized with AdMob + Capacitor Bridge
  */
+
+// --- PLATFORM DETECTION ---
+function isCapacitorNative() {
+  return window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+}
+
+// --- ADMOB LOGIC ---
+let admobInitialized = false;
+let reelsViewed = 0;
+
+const BANNER_AD_ID = 'ca-app-pub-4159023709825629/7216545964';
+const INTERSTITIAL_AD_ID = 'ca-app-pub-4159023709825629/4934419013';
+
+async function initAdMob() {
+  if (!isCapacitorNative()) {
+    console.log('Not running on native platform, skipping AdMob');
+    return;
+  }
+  
+  // Wait a bit for Capacitor plugins to be ready
+  await new Promise(r => setTimeout(r, 500));
+  
+  if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.AdMob) {
+    try {
+      const { AdMob } = window.Capacitor.Plugins;
+      await AdMob.initialize({
+        initializeForTesting: false
+      });
+      admobInitialized = true;
+      console.log('AdMob Initialized successfully');
+      showBannerAd();
+      prepareInterstitialAd();
+    } catch (e) {
+      console.error('AdMob init error:', e);
+    }
+  } else {
+    console.warn('AdMob plugin not available');
+  }
+}
+
+async function showBannerAd() {
+  if (!admobInitialized) return;
+  const { AdMob } = window.Capacitor.Plugins;
+  try {
+    await AdMob.showBanner({
+      adId: BANNER_AD_ID,
+      adSize: 'ADAPTIVE_BANNER',
+      position: 'BOTTOM_CENTER',
+      margin: 60,
+      isTesting: false
+    });
+    console.log('Banner ad shown');
+  } catch (e) {
+    console.error('Show banner error:', e);
+  }
+}
+
+async function hideBannerAd() {
+  if (!admobInitialized) return;
+  try {
+    const { AdMob } = window.Capacitor.Plugins;
+    await AdMob.hideBanner();
+  } catch (e) {
+    console.error('Hide banner error:', e);
+  }
+}
+
+async function prepareInterstitialAd() {
+  if (!admobInitialized) return;
+  try {
+    const { AdMob } = window.Capacitor.Plugins;
+    await AdMob.prepareInterstitial({
+      adId: INTERSTITIAL_AD_ID,
+      isTesting: false
+    });
+    console.log('Interstitial prepared');
+  } catch (e) {
+    console.error('Prepare interstitial error:', e);
+  }
+}
+
+async function showInterstitialAd() {
+  if (!admobInitialized) return;
+  try {
+    const { AdMob } = window.Capacitor.Plugins;
+    await AdMob.showInterstitial();
+    // Prepare next one
+    setTimeout(() => prepareInterstitialAd(), 2000);
+  } catch (e) {
+    console.error('Show interstitial error:', e);
+    // Try to re-prepare
+    prepareInterstitialAd();
+  }
+}
+
+// Show interstitial every N reels viewed
+function onReelViewed() {
+  reelsViewed++;
+  if (reelsViewed > 0 && reelsViewed % 5 === 0) {
+    showInterstitialAd();
+  }
+}
 
 // --- DATA STRUCTURES ---
 const rawPlatforms = [
@@ -23,6 +125,7 @@ let myProfileLinks = [];
 
 // --- DOM ELEMENTS ---
 const authBtn = document.getElementById('auth-btn');
+const authBtnMobile = document.getElementById('auth-btn-mobile');
 const userMenu = document.getElementById('user-menu');
 const logoutBtn = document.getElementById('logout-btn');
 const userAvatarHeader = document.getElementById('user-avatar-header');
@@ -62,24 +165,138 @@ const privacyPolicyBtn = document.getElementById('privacy-policy-btn');
 const privacyModal = document.getElementById('privacy-modal');
 const privacyClose = document.getElementById('privacy-close');
 
+// More menu
+const moreMenuOverlay = document.getElementById('more-menu-overlay');
+const moreMenuClose = document.getElementById('more-menu-close');
+const navMoreBtn = document.getElementById('nav-more-btn');
+
+// Bottom nav
+const bottomNav = document.getElementById('bottom-nav');
+
 function init() {
   populateLinkPlatformSelect();
   listenToAuth();
   fetchProfiles();
+  initAdMob();
+  setupBottomNav();
+  setupMoreMenu();
+  setupBackButton();
 
-  auth.getRedirectResult().catch(err => {
+  auth.getRedirectResult().then(result => {
+    if (result && result.user) {
+      console.log('Redirect login successful:', result.user.displayName);
+    }
+  }).catch(err => {
     console.error("Redirect login error:", err);
   });
 }
 
-// --- FIREBASE AUTH ---
-authBtn.addEventListener('click', () => {
-  // Using popup for better reliability instead of redirect
-  auth.signInWithPopup(googleProvider).catch(err => {
-    console.error("Login failed", err);
-    alert("Login error: " + err.message);
+// --- BOTTOM NAVIGATION ---
+function setupBottomNav() {
+  const navItems = document.querySelectorAll('.nav-item');
+  navItems.forEach(item => {
+    item.addEventListener('click', function() {
+      // Remove active from all
+      navItems.forEach(n => n.classList.remove('active'));
+    });
   });
-});
+}
+
+function setActiveNav(id) {
+  const navItems = document.querySelectorAll('.nav-item');
+  navItems.forEach(n => n.classList.remove('active'));
+  const target = document.getElementById(id);
+  if (target) target.classList.add('active');
+}
+
+// --- MORE MENU ---
+function setupMoreMenu() {
+  if (navMoreBtn) {
+    navMoreBtn.addEventListener('click', () => {
+      moreMenuOverlay.classList.remove('hidden');
+    });
+  }
+  if (moreMenuClose) {
+    moreMenuClose.addEventListener('click', () => {
+      moreMenuOverlay.classList.add('hidden');
+    });
+  }
+  // Close on background tap
+  if (moreMenuOverlay) {
+    moreMenuOverlay.addEventListener('click', (e) => {
+      if (e.target === moreMenuOverlay) {
+        moreMenuOverlay.classList.add('hidden');
+      }
+    });
+  }
+}
+
+// --- ANDROID BACK BUTTON ---
+function setupBackButton() {
+  if (isCapacitorNative() && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+    window.Capacitor.Plugins.App.addListener('backButton', () => {
+      // Close modals if open
+      const modals = document.querySelectorAll('.modal-overlay:not(.hidden)');
+      if (modals.length > 0) {
+        modals.forEach(m => m.classList.add('hidden'));
+        return;
+      }
+      // Close more menu if open
+      if (moreMenuOverlay && !moreMenuOverlay.classList.contains('hidden')) {
+        moreMenuOverlay.classList.add('hidden');
+        return;
+      }
+      // If viewing something other than swipe, go back to swipe
+      if (!isSwipeMode) {
+        isSwipeMode = true;
+        isLeaderboardMode = false;
+        isViewingFavorites = false;
+        profilesGrid.classList.add('hidden');
+        if (swipeFeed) swipeFeed.classList.remove('hidden');
+        viewTitle.textContent = "Swipe Feed";
+        viewIcon.innerHTML = '<i class="fa-solid fa-mobile-screen"></i>';
+        setActiveNav('tiktok-mode-btn-header');
+        renderSwipeFeed();
+        return;
+      }
+      // Otherwise minimize app
+      if (window.Capacitor.Plugins.App) {
+        window.Capacitor.Plugins.App.minimizeApp();
+      }
+    });
+  }
+}
+
+// --- FIREBASE AUTH ---
+function doGoogleSignIn() {
+  if (isCapacitorNative()) {
+    // Use redirect for Capacitor WebView (popup doesn't work)
+    auth.signInWithRedirect(googleProvider).catch(err => {
+      console.error("Redirect login failed", err);
+      // Fallback to popup
+      auth.signInWithPopup(googleProvider).catch(err2 => {
+        console.error("Popup login also failed", err2);
+        alert("Login error: " + err2.message);
+      });
+    });
+  } else {
+    // Web browser: use popup
+    auth.signInWithPopup(googleProvider).catch(err => {
+      console.error("Login failed", err);
+      alert("Login error: " + err.message);
+    });
+  }
+}
+
+if (authBtn) {
+  authBtn.addEventListener('click', doGoogleSignIn);
+}
+if (authBtnMobile) {
+  authBtnMobile.addEventListener('click', () => {
+    moreMenuOverlay.classList.add('hidden');
+    doGoogleSignIn();
+  });
+}
 
 logoutBtn.addEventListener('click', () => {
   auth.signOut();
@@ -93,17 +310,18 @@ function listenToAuth() {
         name: user.displayName,
         avatar: user.photoURL || 'https://i.pravatar.cc/150?u=' + user.uid
       };
-      authBtn.classList.add('hidden');
+      if (authBtn) authBtn.classList.add('hidden');
+      if (authBtnMobile) authBtnMobile.classList.add('hidden');
       userMenu.classList.remove('hidden');
       userAvatarHeader.src = currentUser.avatar;
       myProfileBtnHeader.classList.remove('hidden');
     } else {
       currentUser = null;
-      authBtn.classList.remove('hidden');
+      if (authBtn) authBtn.classList.remove('hidden');
+      if (authBtnMobile) authBtnMobile.classList.remove('hidden');
       userMenu.classList.add('hidden');
       myProfileBtnHeader.classList.add('hidden');
     }
-    // Re-render profiles to update favorite icons based on current user
     renderProfiles();
   });
 }
@@ -115,7 +333,6 @@ function fetchProfiles() {
     snapshot.forEach(doc => {
       profiles.push({ id: doc.id, ...doc.data() });
     });
-    // Ensure all profiles have favoritedBy and favoritesCount for sorting
     profiles.forEach(p => {
       if (!p.favoritedBy) p.favoritedBy = [];
       if (typeof p.favoritesCount !== 'number') p.favoritesCount = p.favoritedBy.length;
@@ -142,12 +359,18 @@ favoritesBtnHeader.addEventListener('click', () => {
     return;
   }
   isViewingFavorites = !isViewingFavorites;
+  isSwipeMode = false;
+  isLeaderboardMode = false;
+  if (swipeFeed) swipeFeed.classList.add('hidden');
+  profilesGrid.classList.remove('hidden');
+  
   if (isViewingFavorites) {
     favoritesBtnHeader.style.color = '#eab308';
     viewTitle.textContent = 'My Favorites';
     viewIcon.innerHTML = '🌟';
+    setActiveNav('favorites-btn-header');
   } else {
-    favoritesBtnHeader.style.color = '#a1a1aa';
+    favoritesBtnHeader.style.color = '';
     viewTitle.textContent = 'All Creators';
     viewIcon.innerHTML = '<i class="fa-solid fa-users"></i>';
   }
@@ -190,9 +413,8 @@ function renderProfiles(profilesList = profiles) {
       const row = document.createElement('div');
       row.className = 'profile-row';
       
-      // Filter links to only show youtube links (max 10)
       let platformLinks = (p.links || []).filter(l => l.platformId === 'youtube').slice(0, 10);
-      if (platformLinks.length === 0) return; // Skip if no youtube links
+      if (platformLinks.length === 0) return;
       
       let linksHTML = platformLinks.map((link, idx) => {
         const ytId = getYouTubeId(link.url);
@@ -237,7 +459,7 @@ function renderProfiles(profilesList = profiles) {
       profilesGrid.appendChild(row);
     });
 
-    // Attach link listeners for Embed view
+    // Attach link listeners
     document.querySelectorAll('.yt-thumbnail-pill').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -325,14 +547,12 @@ function toggleVideoLike(profileId, url) {
 // --- EMBED VIEWER LOGIC ---
 function openLinkInApp(url, platformId, isEmbeddable) {
   if (!isEmbeddable) {
-    // If it's not embeddable or it's adult, open externally
     window.open(url, '_blank');
     return;
   }
 
   let embedUrl = url;
   
-  // Transform URL for iframes where applicable
   if (platformId === 'youtube') {
     if (url.includes('watch?v=')) {
       const vidId = url.split('watch?v=')[1].split('&')[0];
@@ -343,7 +563,6 @@ function openLinkInApp(url, platformId, isEmbeddable) {
     }
   }
 
-  // Set the iframe and show
   embedContainer.innerHTML = `<iframe src="${embedUrl}" allowfullscreen allow="autoplay; encrypted-media"></iframe>`;
   embedModal.classList.remove('hidden');
 }
@@ -398,7 +617,6 @@ addLinkBtn.addEventListener('click', () => {
     return;
   }
 
-  // Check if they already have 10 links for this platform
   const countForPlatform = myProfileLinks.filter(l => l.platformId === pid).length;
   if (countForPlatform >= 10) {
     linkErrorMsg.textContent = `Error: Limit reached. You can only add up to 10 links.`;
@@ -407,7 +625,6 @@ addLinkBtn.addEventListener('click', () => {
   }
 
   linkErrorMsg.classList.add('hidden');
-
   myProfileLinks.push({ platformId: pid, url: url });
   linkUrlInput.value = '';
   renderAddedLinks();
@@ -439,7 +656,7 @@ profileForm.addEventListener('submit', (e) => {
   e.preventDefault();
   if (!currentUser) return;
   let nick = profileNickname.value.trim();
-  nick = nick.substring(0, 20); // Enforce max 20 characters
+  nick = nick.substring(0, 20);
   if (!nick || myProfileLinks.length === 0) {
     linkErrorMsg.textContent = 'Nickname and at least 1 link are required.';
     linkErrorMsg.classList.remove('hidden');
@@ -483,14 +700,23 @@ ageConfirmBtn.addEventListener('click', () => {
 });
 
 // --- PRIVACY MODAL LOGIC ---
-privacyPolicyBtn.addEventListener('click', (e) => {
-  e.preventDefault();
-  privacyModal.classList.remove('hidden');
-});
+if (privacyPolicyBtn) {
+  privacyPolicyBtn.addEventListener('click', (e) => {
+    // On native: open privacy.html, on web: show modal fallback
+    if (isCapacitorNative()) {
+      // Let the link navigate naturally (target="_blank" handles it)
+      return;
+    }
+    e.preventDefault();
+    if (privacyModal) privacyModal.classList.remove('hidden');
+  });
+}
 
-privacyClose.addEventListener('click', () => {
-  privacyModal.classList.add('hidden');
-});
+if (privacyClose) {
+  privacyClose.addEventListener('click', () => {
+    privacyModal.classList.add('hidden');
+  });
+}
 
 init();
 
@@ -514,13 +740,11 @@ let isLeaderboardMode = false;
 window.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search);
   
-  // Referral Check
   const refId = urlParams.get('ref');
   if (refId) {
     sessionStorage.setItem('pendingReferral', refId);
   }
   
-  // Widget / Specific User Check
   const userId = urlParams.get('user');
   if (userId) {
     document.body.classList.add('widget-mode');
@@ -546,7 +770,6 @@ auth.onAuthStateChanged(user => {
   if (user) {
     const refId = sessionStorage.getItem('pendingReferral');
     if (refId && refId !== user.uid) {
-      // Add referral point to referrer
       db.collection('profiles').doc(refId).update({
         referrals: firebase.firestore.FieldValue.increment(1)
       }).catch(console.error);
@@ -590,7 +813,7 @@ window.voteCreator = function(creatorId, e) {
   db.collection('profiles').doc(creatorId).update({
     votes: firebase.firestore.FieldValue.increment(1)
   }).then(() => {
-    fetchProfiles(); // Refresh
+    fetchProfiles();
   }).catch(err => {
     console.error("Error voting", err);
   });
@@ -599,12 +822,14 @@ window.voteCreator = function(creatorId, e) {
 if(leaderboardBtnHeader) leaderboardBtnHeader.addEventListener('click', () => {
   isLeaderboardMode = !isLeaderboardMode;
   isSwipeMode = false;
+  isViewingFavorites = false;
   if(swipeFeed) swipeFeed.classList.add('hidden');
   profilesGrid.classList.remove('hidden');
   
   if (isLeaderboardMode) {
     viewTitle.textContent = "Leaderboard 🏆";
     viewIcon.innerHTML = '<i class="fa-solid fa-trophy"></i>';
+    setActiveNav('leaderboard-btn-header');
     const sorted = [...profiles].sort((a,b) => (b.votes || 0) - (a.votes || 0));
     renderProfiles(sorted);
   } else {
@@ -618,12 +843,14 @@ if(leaderboardBtnHeader) leaderboardBtnHeader.addEventListener('click', () => {
 if(tiktokModeBtnHeader) tiktokModeBtnHeader.addEventListener('click', () => {
   isSwipeMode = !isSwipeMode;
   isLeaderboardMode = false;
+  isViewingFavorites = false;
   
   if (isSwipeMode) {
     profilesGrid.classList.add('hidden');
     swipeFeed.classList.remove('hidden');
     viewTitle.textContent = "Swipe Feed";
     viewIcon.innerHTML = '<i class="fa-solid fa-mobile-screen"></i>';
+    setActiveNav('tiktok-mode-btn-header');
     renderSwipeFeed();
   } else {
     swipeFeed.classList.add('hidden');
@@ -640,7 +867,6 @@ window.likeVideoInSwipe = function(profileId, url, btnElement) {
     return;
   }
   
-  // Optimistically update the UI
   let span = btnElement.querySelector('span');
   let i = btnElement.querySelector('i');
   let count = parseInt(span.textContent) || 0;
@@ -677,7 +903,7 @@ function renderSwipeFeed() {
     return;
   }
 
-  // Track global mute state - starts muted to allow autoplay, user can unmute
+  // Track global mute state
   window._swipeMuted = true;
 
   allVideos.forEach((v, index) => {
@@ -689,7 +915,6 @@ function renderSwipeFeed() {
     }
     if (!videoId) return;
 
-    // All start muted+autoplay so the browser allows it; user can unmute anytime
     const embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&enablejsapi=1&rel=0&modestbranding=1`;
 
     const likedBy = v.link.likedBy || [];
@@ -709,7 +934,7 @@ function renderSwipeFeed() {
         style="width:100%;height:100%;border:none;pointer-events:all;"
       ></iframe>
       <div class="swipe-overlay-info">
-        <h3 style="margin:0 0 4px 0; font-size:1.2rem; text-shadow:0 1px 4px rgba(0,0,0,0.8);">@${v.profile.nickname || 'Unknown'}</h3>
+        <h3 style="margin:0 0 4px 0; font-size:1.1rem; text-shadow:0 1px 4px rgba(0,0,0,0.8);">@${v.profile.nickname || 'Unknown'}</h3>
       </div>
       <div class="swipe-actions">
         <div class="action-btn" id="unmute-btn-${index}" onclick="toggleSwipeMute(${index})" title="Tap to unmute">
@@ -730,9 +955,11 @@ function renderSwipeFeed() {
   });
 
   setupSwipeAutoplay();
+  // Track reel views for interstitial
+  onReelViewed();
 }
 
-// Toggle mute/unmute for a specific video and update global state
+// Toggle mute/unmute
 window.toggleSwipeMute = function(index) {
   window._swipeMuted = !window._swipeMuted;
   const iframe = document.getElementById(`swipe-iframe-${index}`);
@@ -778,22 +1005,20 @@ function setupSwipeAutoplay() {
       const iframe = entry.target.querySelector('iframe');
       if (!iframe) return;
       if (entry.isIntersecting) {
-        // Play the video that scrolled into view
         iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
-        // Respect the current mute/unmute state
         if (!window._swipeMuted) {
           setTimeout(() => {
             iframe.contentWindow.postMessage('{"event":"command","func":"unMute","args":""}', '*');
             iframe.contentWindow.postMessage('{"event":"command","func":"setVolume","args":[100]}', '*');
           }, 500);
         }
-        // Update unmute btn icon for this item
         const btn = entry.target.querySelector('[id^="unmute-btn-"]');
         if(btn) {
           btn.querySelector('i').className = window._swipeMuted ? 'fa-solid fa-volume-xmark' : 'fa-solid fa-volume-high';
         }
+        // Count reel view for interstitial trigger
+        onReelViewed();
       } else {
-        // Pause the video that scrolled out
         iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
       }
     });

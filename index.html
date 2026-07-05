@@ -2,48 +2,43 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>TopTube Showcase</title>
   <meta name="description" content="Discover creators and showcase your social channels on TopTube." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
   <link rel="stylesheet" href="styles.css" />
+  <link rel="manifest" href="manifest.json" />
 </head>
 <body>
 
-  <!-- HEADER -->
+  <!-- HEADER (Top bar) -->
   <header id="main-header">
     <div class="header-left">
       <a href="#" class="logo" id="logo-home">
         <img src="logo.png" alt="TopTube Logo">
       </a>
-      <button id="my-profile-btn-header" class="btn-upload hidden">
-        <i class="fa-solid fa-video"></i> Upload videos
-      </button>
     </div>
     <div class="header-center">
-      <div class="search-wrap">
+      <!-- These appear only when NOT in swipe mode -->
+      <div class="search-wrap desktop-only" id="search-wrap">
         <input type="text" id="search-input" placeholder="Search creators..." autocomplete="off" />
         <button id="search-btn" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></button>
       </div>
-      <button id="tiktok-mode-btn-header" class="star-btn" title="Shorts Feed">
-        <i class="fa-solid fa-mobile-screen"></i>
-      </button>
-      <button id="favorites-btn-header" class="star-btn" title="Favorites">
-        <i class="fa-solid fa-star"></i>
-      </button>
-      <button id="leaderboard-btn-header" class="star-btn" title="Leaderboard">
-        <i class="fa-solid fa-trophy"></i>
-      </button>
     </div>
     <div class="header-right">
-      <button id="auth-btn" class="btn-primary">
+      <a href="https://lnk.bio/jijascuasgames" target="_blank" class="jijascuas-link desktop-only" id="jijascuas-link">jijascuasgames</a>
+      <a href="privacy.html" target="_blank" class="privacy-link desktop-only" id="privacy-policy-btn-header">Privacy Policy</a>
+      <button id="auth-btn" class="btn-google desktop-only">
         <i class="fa-brands fa-google"></i> Sign in with Google
       </button>
       <div id="user-menu" class="hidden">
-        <a href="https://lnk.bio/jijascuasgames" target="_blank" style="background-color: purple; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; margin-right: 15px; font-size: 0.9rem; font-weight: bold;">jijascuasgames</a>
-        <a href="#" id="privacy-policy-btn" style="color: #a1a1aa; font-size: 0.9rem; text-decoration: underline; margin-right: 15px;">Privacy Policy</a>
+        <button id="my-profile-btn-header" class="btn-upload hidden">
+          <i class="fa-solid fa-video"></i> Upload
+        </button>
         <img id="user-avatar-header" src="" alt="Avatar" class="avatar-small"/>
         <button id="logout-btn" title="Sign Out"><i class="fa-solid fa-sign-out-alt"></i></button>
       </div>
@@ -76,6 +71,48 @@
         <p>No profiles found.</p>
       </div>
     </main>
+  </div>
+
+  <!-- BOTTOM NAVIGATION BAR (Mobile) -->
+  <nav id="bottom-nav">
+    <button id="tiktok-mode-btn-header" class="nav-item active" title="Shorts Feed">
+      <i class="fa-solid fa-mobile-screen"></i>
+      <span>Shorts</span>
+    </button>
+    <button id="favorites-btn-header" class="nav-item" title="Favorites">
+      <i class="fa-solid fa-star"></i>
+      <span>Favorites</span>
+    </button>
+    <button id="leaderboard-btn-header" class="nav-item" title="Leaderboard">
+      <i class="fa-solid fa-trophy"></i>
+      <span>Leaderboard</span>
+    </button>
+    <button id="nav-more-btn" class="nav-item" title="More">
+      <i class="fa-solid fa-bars"></i>
+      <span>More</span>
+    </button>
+  </nav>
+
+  <!-- MORE MENU OVERLAY (shown when "More" is tapped) -->
+  <div id="more-menu-overlay" class="hidden">
+    <div id="more-menu-panel">
+      <button class="more-menu-close" id="more-menu-close"><i class="fa-solid fa-xmark"></i></button>
+      <div class="more-menu-items">
+        <button id="auth-btn-mobile" class="more-menu-item">
+          <i class="fa-brands fa-google"></i> Sign in with Google
+        </button>
+        <a href="https://lnk.bio/jijascuasgames" target="_blank" class="more-menu-item">
+          <i class="fa-solid fa-gamepad"></i> jijascuasgames
+        </a>
+        <a href="privacy.html" target="_blank" class="more-menu-item" id="privacy-policy-btn">
+          <i class="fa-solid fa-shield-halved"></i> Privacy Policy
+        </a>
+        <div class="more-menu-item" id="search-mobile-wrap">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" id="search-input-mobile" placeholder="Search creators..." autocomplete="off" />
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ============== MODALS ============== -->
@@ -161,7 +198,7 @@
     </div>
   </div>
 
-  <!-- PRIVACY POLICY MODAL -->
+  <!-- PRIVACY POLICY MODAL (fallback for in-app) -->
   <div id="privacy-modal" class="modal-overlay hidden">
     <div class="modal-box" style="max-width: 600px;">
       <button class="modal-close" id="privacy-close"><i class="fa-solid fa-xmark"></i></button>
@@ -170,11 +207,9 @@
         <h2>Privacy Policy</h2>
       </div>
       <div style="color: #94a3b8; line-height: 1.6; max-height: 60vh; overflow-y: auto; padding-right: 10px; margin-top: 20px;">
-        <p>Your privacy is important to us. It is TopTube's policy to respect your privacy regarding any information we may collect from you across our website.</p>
+        <p>Your privacy is important to us. Please visit our full <a href="privacy.html" target="_blank" style="color: #6366f1;">Privacy Policy</a> for details.</p>
         <br>
-        <p>We only ask for personal information when we truly need it to provide a service to you. We collect it by fair and lawful means, with your knowledge and consent.</p>
-        <br>
-        <p>We don't share any personally identifying information publicly or with third-parties, except when required to by law.</p>
+        <p>Contact: <a href="mailto:jijascuas@gmail.com" style="color: #6366f1;">jijascuas@gmail.com</a></p>
       </div>
     </div>
   </div>
