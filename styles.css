@@ -948,6 +948,17 @@ body {
   border: none;
 }
 
+/* ================= ADMOB BANNER ADJUSTMENT ================= */
+body.has-ad-banner #bottom-nav {
+  padding-bottom: 60px;
+  height: calc(var(--bottom-nav-height) + 60px);
+}
+
+body.has-ad-banner #main-content {
+  padding-bottom: calc(var(--bottom-nav-height) + 120px + var(--safe-bottom));
+}
+
+
 /* ================= SWIPE FEED (TIKTOK MODE) ================= */
 #swipe-feed {
   display: flex;

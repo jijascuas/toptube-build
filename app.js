@@ -31,6 +31,7 @@ async function initAdMob() {
         initializeForTesting: false
       });
       admobInitialized = true;
+      document.body.classList.add('has-ad-banner');
       console.log('AdMob Initialized successfully');
       showBannerAd();
       prepareInterstitialAd();
@@ -50,7 +51,7 @@ async function showBannerAd() {
       adId: BANNER_AD_ID,
       adSize: 'ADAPTIVE_BANNER',
       position: 'BOTTOM_CENTER',
-      margin: 80,
+      margin: 0,
       isTesting: false
     });
     console.log('Banner ad shown');
@@ -282,17 +283,20 @@ function setupBackButton() {
 
 // --- FIREBASE AUTH ---
 function doGoogleSignIn() {
-  if (isCapacitorNative()) {
-    auth.signInWithRedirect(googleProvider).catch(err => {
-      console.error("Redirect login failed", err);
-      alert("Login error: " + err.message);
-    });
-  } else {
-    auth.signInWithPopup(googleProvider).catch(err => {
-      console.error("Popup sign in error:", err);
-      alert("Error starting Google Sign-In: " + err.message);
-    });
-  }
+  // Renewed login code: prefer popup, fallback to redirect if blocked
+  auth.signInWithPopup(googleProvider).then(result => {
+    console.log("Login successful:", result.user.displayName);
+    if (moreMenuOverlay) moreMenuOverlay.classList.add('hidden');
+  }).catch(err => {
+    console.error("Popup sign in error:", err);
+    if (err.code === 'auth/popup-blocked' || err.code === 'auth/operation-not-supported-in-this-environment') {
+      auth.signInWithRedirect(googleProvider).catch(redirectErr => {
+        alert("Error de redirección: " + redirectErr.message);
+      });
+    } else {
+      alert("Error de inicio de sesión: " + err.message);
+    }
+  });
 }
 
 if (authBtn) {
@@ -321,6 +325,10 @@ function listenToAuth() {
       if (authBtnMobile) authBtnMobile.classList.add('hidden');
       userMenu.classList.remove('hidden');
       userAvatarHeader.src = currentUser.avatar;
+      
+      const userNameDisplay = document.getElementById('user-name-display');
+      if (userNameDisplay) userNameDisplay.textContent = currentUser.name;
+      
       myProfileBtnHeader.classList.remove('hidden');
     } else {
       currentUser = null;
