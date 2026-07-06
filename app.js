@@ -50,10 +50,13 @@ async function showBannerAd() {
       adId: BANNER_AD_ID,
       adSize: 'ADAPTIVE_BANNER',
       position: 'BOTTOM_CENTER',
-      margin: 60,
+      margin: 80,
       isTesting: false
     });
     console.log('Banner ad shown');
+    if (typeof isSwipeMode !== 'undefined' && isSwipeMode) {
+      await AdMob.hideBanner();
+    }
   } catch (e) {
     console.error('Show banner error:', e);
   }
@@ -375,6 +378,9 @@ favoritesBtnHeader.addEventListener('click', () => {
     viewIcon.innerHTML = '<i class="fa-solid fa-users"></i>';
   }
   renderProfiles();
+  if (window.Capacitor && window.Capacitor.Plugins.AdMob && admobInitialized) {
+    window.Capacitor.Plugins.AdMob.resumeBanner().catch(console.error);
+  }
 });
 
 function getYouTubeId(url) {
@@ -563,11 +569,17 @@ function openLinkInApp(url, platformId, isEmbeddable) {
 
   embedContainer.innerHTML = `<iframe src="${embedUrl}" allowfullscreen allow="autoplay; encrypted-media"></iframe>`;
   embedModal.classList.remove('hidden');
+  if (window.Capacitor && window.Capacitor.Plugins.AdMob && admobInitialized) {
+    window.Capacitor.Plugins.AdMob.hideBanner().catch(console.error);
+  }
 }
 
 embedCloseBtn.addEventListener('click', () => {
   embedContainer.innerHTML = '';
   embedModal.classList.add('hidden');
+  if (window.Capacitor && window.Capacitor.Plugins.AdMob && admobInitialized && !isSwipeMode) {
+    window.Capacitor.Plugins.AdMob.resumeBanner().catch(console.error);
+  }
 });
 
 // --- MY PROFILE LOGIC ---
@@ -805,6 +817,9 @@ if(leaderboardBtnHeader) leaderboardBtnHeader.addEventListener('click', () => {
     viewIcon.innerHTML = '<i class="fa-solid fa-users"></i>';
     renderProfiles(profiles);
   }
+  if (window.Capacitor && window.Capacitor.Plugins.AdMob && admobInitialized) {
+    window.Capacitor.Plugins.AdMob.resumeBanner().catch(console.error);
+  }
 });
 
 // 4. TikTok Swipe Feed
@@ -820,12 +835,18 @@ if(tiktokModeBtnHeader) tiktokModeBtnHeader.addEventListener('click', () => {
     viewIcon.innerHTML = '<i class="fa-solid fa-mobile-screen"></i>';
     setActiveNav('tiktok-mode-btn-header');
     renderSwipeFeed();
+    if (window.Capacitor && window.Capacitor.Plugins.AdMob && admobInitialized) {
+      window.Capacitor.Plugins.AdMob.hideBanner().catch(console.error);
+    }
   } else {
     swipeFeed.classList.add('hidden');
     profilesGrid.classList.remove('hidden');
     viewTitle.textContent = "All Creators";
     viewIcon.innerHTML = '<i class="fa-solid fa-users"></i>';
     renderProfiles(profiles);
+    if (window.Capacitor && window.Capacitor.Plugins.AdMob && admobInitialized) {
+      window.Capacitor.Plugins.AdMob.resumeBanner().catch(console.error);
+    }
   }
 });
 

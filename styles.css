@@ -510,8 +510,9 @@ body {
   border-radius: 14px;
   padding: 12px 14px;
   display: flex;
-  align-items: center;
-  gap: 14px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
   backdrop-filter: var(--glass-blur);
   box-shadow: var(--glass-shadow);
   transition: all 0.3s ease;
@@ -526,7 +527,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 170px;
+  width: 100%;
   position: relative;
 }
 
@@ -542,10 +543,7 @@ body {
 .row-name {
   font-size: 1rem;
   font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 140px;
+  white-space: normal;
 }
 
 .row-user-info .card-favorite-btn {
@@ -557,6 +555,8 @@ body {
   display: flex;
   gap: 8px;
   flex: 1;
+  overflow-x: auto;
+  padding-bottom: 5px;
 }
 
 /* ================= PROFILE CARD ================= */
@@ -954,8 +954,8 @@ body {
   flex-direction: column;
   align-items: center;
   width: 100%;
-  height: calc(100vh - 56px - var(--bottom-nav-height) - var(--safe-bottom));
-  height: calc(100dvh - 56px - var(--bottom-nav-height) - var(--safe-bottom));
+  height: calc(100vh - var(--bottom-nav-height) - var(--safe-bottom));
+  height: calc(100dvh - var(--bottom-nav-height) - var(--safe-bottom));
   overflow-y: scroll;
   scroll-snap-type: y mandatory;
   scroll-behavior: smooth;
@@ -974,8 +974,8 @@ body {
 .swipe-item {
   width: 100%;
   max-width: 500px;
-  height: calc(100vh - 56px - var(--bottom-nav-height) - var(--safe-bottom));
-  height: calc(100dvh - 56px - var(--bottom-nav-height) - var(--safe-bottom));
+  height: calc(100vh - var(--bottom-nav-height) - var(--safe-bottom));
+  height: calc(100dvh - var(--bottom-nav-height) - var(--safe-bottom));
   scroll-snap-align: start;
   position: relative;
   display: flex;
@@ -1116,9 +1116,7 @@ body.widget-mode .profile-card {
     display: flex;
   }
 
-  #bottom-nav {
-    display: none;
-  }
+
 
   #more-menu-overlay {
     display: none !important;

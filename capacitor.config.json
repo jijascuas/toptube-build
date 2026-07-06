@@ -2,5 +2,9 @@
   "appId": "com.toptube.app",
   "appName": "TopTube",
   "webDir": "www",
-  "bundledWebRuntime": false
+  "bundledWebRuntime": false,
+  "server": {
+    "hostname": "toptube-jijascuas.firebaseapp.com",
+    "androidScheme": "https"
+  }
 }
