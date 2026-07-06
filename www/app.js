@@ -188,9 +188,19 @@ function init() {
   auth.getRedirectResult().then(result => {
     if (result && result.user) {
       console.log('Redirect login successful:', result.user.displayName);
+      if (window.location.pathname.includes('/__/auth/handler')) {
+        window.location.replace('/');
+      }
+    } else {
+      if (window.location.pathname.includes('/__/auth/handler')) {
+        window.location.replace('/');
+      }
     }
   }).catch(err => {
     console.error("Redirect login error:", err);
+    if (window.location.pathname.includes('/__/auth/handler')) {
+      window.location.replace('/');
+    }
   });
 }
 
@@ -273,20 +283,14 @@ function setupBackButton() {
 // --- FIREBASE AUTH ---
 function doGoogleSignIn() {
   if (isCapacitorNative()) {
-    // Use redirect for Capacitor WebView (popup doesn't work)
     auth.signInWithRedirect(googleProvider).catch(err => {
       console.error("Redirect login failed", err);
-      // Fallback to popup
-      auth.signInWithPopup(googleProvider).catch(err2 => {
-        console.error("Popup login also failed", err2);
-        alert("Login error: " + err2.message);
-      });
+      alert("Login error: " + err.message);
     });
   } else {
-    // Web browser: use popup
     auth.signInWithPopup(googleProvider).catch(err => {
-      console.error("Login failed", err);
-      alert("Login error: " + err.message);
+      console.error("Popup sign in error:", err);
+      alert("Error starting Google Sign-In: " + err.message);
     });
   }
 }
