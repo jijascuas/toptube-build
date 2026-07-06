@@ -27,11 +27,8 @@
         </div>
         <div id="top-right-auth">
           <div id="auth-buttons" style="display: flex; gap: 5px;">
-            <button id="auth-anon-btn-top" style="background: var(--surface-color); color: var(--text-color); border: 1px solid var(--border-color); padding: 6px 12px; font-size: 0.8rem; border-radius: 20px; cursor: pointer;">
-              <i class="fa-solid fa-user-secret"></i> Guest
-            </button>
             <button id="auth-btn-top" class="btn-google" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 20px;">
-              <i class="fa-brands fa-google"></i> Sign In
+              <i class="fa-solid fa-user"></i> Sign In
             </button>
           </div>
           <div id="user-menu-top" class="hidden" style="display: flex; align-items: center; gap: 8px; margin-right: 5px;">
@@ -199,6 +196,27 @@
     firebase.initializeApp(firebaseConfig);
   </script>
 
-  <script src="/app.js"></script>
+  <div id="auth-modal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px);">
+    <div style="background: var(--surface-color); padding: 25px; border-radius: 12px; width: 90%; max-width: 350px; position: relative;">
+      <button id="close-auth-modal" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--text-color); font-size: 1.2rem; cursor: pointer;"><i class="fa-solid fa-xmark"></i></button>
+      <h2 style="margin-bottom: 20px; font-size: 1.4rem; text-align: center; font-weight: bold;">Join TopTube</h2>
+      <input type="email" id="auth-email" placeholder="Email address" style="width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); box-sizing: border-box;">
+      <input type="password" id="auth-password" placeholder="Password" style="width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color); box-sizing: border-box;">
+      <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+        <button id="login-email-btn" style="flex: 1; padding: 12px; border-radius: 8px; background: var(--accent-color); color: white; border: none; font-weight: bold; cursor: pointer;">Login</button>
+        <button id="register-email-btn" style="flex: 1; padding: 12px; border-radius: 8px; background: transparent; color: var(--accent-color); border: 1px solid var(--accent-color); font-weight: bold; cursor: pointer;">Register</button>
+      </div>
+      <div style="display: flex; align-items: center; margin-bottom: 15px;">
+        <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+        <span style="padding: 0 10px; font-size: 0.9rem; color: #aaa;">OR</span>
+        <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+      </div>
+      <button id="modal-google-btn" class="btn-google" style="width: 100%; padding: 12px; border-radius: 8px; display: flex; justify-content: center; font-size: 1rem; align-items: center; gap: 10px;">
+        <i class="fa-brands fa-google"></i> Sign in with Google
+      </button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
 </body>
 </html>

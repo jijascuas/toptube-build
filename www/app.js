@@ -129,7 +129,6 @@ let myProfileLinks = [];
 
 // --- DOM ELEMENTS ---
 const authBtnTop = document.getElementById('auth-btn-top');
-const authAnonBtnTop = document.getElementById('auth-anon-btn-top');
 const authButtons = document.getElementById('auth-buttons');
 const userMenuTop = document.getElementById('user-menu-top');
 const logoutBtnTop = document.getElementById('logout-btn-top');
@@ -285,12 +284,48 @@ function setupBackButton() {
 
 // --- FIREBASE AUTH ---
 
-if (authAnonBtnTop) {
-  authAnonBtnTop.addEventListener('click', () => {
-    auth.signInAnonymously().catch(err => {
-      console.error("Anonymous login failed", err);
-      alert("Error de inicio de sesión anónimo: " + err.message);
-    });
+if (authBtnTop && authModal) {
+  authBtnTop.addEventListener('click', () => {
+    authModal.style.display = 'flex';
+    authModal.classList.remove('hidden');
+  });
+}
+if (closeAuthModal) {
+  closeAuthModal.addEventListener('click', () => {
+    authModal.style.display = 'none';
+    authModal.classList.add('hidden');
+  });
+}
+
+if (loginEmailBtn) {
+  loginEmailBtn.addEventListener('click', () => {
+    const email = authEmail.value;
+    const pass = authPassword.value;
+    if (!email || !pass) return alert('Por favor, ingresa correo y contraseña.');
+    auth.signInWithEmailAndPassword(email, pass).then(() => {
+      authModal.style.display = 'none';
+      authModal.classList.add('hidden');
+    }).catch(err => alert(err.message));
+  });
+}
+
+if (registerEmailBtn) {
+  registerEmailBtn.addEventListener('click', () => {
+    const email = authEmail.value;
+    const pass = authPassword.value;
+    if (!email || !pass) return alert('Por favor, ingresa correo y contraseña.');
+    auth.createUserWithEmailAndPassword(email, pass).then(() => {
+      authModal.style.display = 'none';
+      authModal.classList.add('hidden');
+    }).catch(err => alert(err.message));
+  });
+}
+
+if (modalGoogleBtn) {
+  modalGoogleBtn.addEventListener('click', () => {
+    authModal.style.display = 'none';
+    authModal.classList.add('hidden');
+    doGoogleSignIn();
   });
 }
 
@@ -494,7 +529,7 @@ function renderProfiles(profilesList = profiles) {
             <i class="fa-solid fa-star"></i>
           </button>
           <div class="avatar-container ${p.referrals > 3 ? 'badge-golden' : ''}">
-            <img src="${p.avatar}" alt="${p.nickname}" class="row-avatar" />
+            <img src="${p.avatar || 'https://ui-avatars.com/api/?name='+encodeURIComponent(p.nickname || p.name || 'User')+'&background=random'}" alt="" class="row-avatar" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(p.nickname || p.name || 'User')}&background=random'" />
             ${p.referrals > 3 ? '<div class="badge-icon"><i class="fa-solid fa-check"></i></div>' : ''}
           </div>
           <div style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 5px;">
@@ -783,6 +818,16 @@ const swipeFeed = document.getElementById('swipe-feed');
 const tiktokModeBtnHeader = document.getElementById('tiktok-mode-btn-header');
 const leaderboardBtnHeader = document.getElementById('leaderboard-btn-header');
 
+// Auth Modal
+const authModal = document.getElementById('auth-modal');
+const closeAuthModal = document.getElementById('close-auth-modal');
+const authEmail = document.getElementById('auth-email');
+const authPassword = document.getElementById('auth-password');
+const loginEmailBtn = document.getElementById('login-email-btn');
+const registerEmailBtn = document.getElementById('register-email-btn');
+const modalGoogleBtn = document.getElementById('modal-google-btn');
+
+if (closeAuthModal) closeAuthModal.addEventListener('click', () => authModal.classList.add('hidden'));
 
 let isSwipeMode = true;
 let isLeaderboardMode = false;
