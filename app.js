@@ -129,6 +129,8 @@ let myProfileLinks = [];
 
 // --- DOM ELEMENTS ---
 const authBtnTop = document.getElementById('auth-btn-top');
+const authAnonBtnTop = document.getElementById('auth-anon-btn-top');
+const authButtons = document.getElementById('auth-buttons');
 const userMenuTop = document.getElementById('user-menu-top');
 const logoutBtnTop = document.getElementById('logout-btn-top');
 const userAvatarTop = document.getElementById('user-avatar-top');
@@ -282,6 +284,15 @@ function setupBackButton() {
 }
 
 // --- FIREBASE AUTH ---
+if (authAnonBtnTop) {
+  authAnonBtnTop.addEventListener('click', () => {
+    auth.signInAnonymously().catch(err => {
+      console.error("Anonymous login failed", err);
+      alert("Error de inicio de sesión anónimo: " + err.message);
+    });
+  });
+}
+
 function doGoogleSignIn() {
   if (isCapacitorNative()) {
     auth.signInWithRedirect(googleProvider).catch(err => {
@@ -316,18 +327,28 @@ function listenToAuth() {
     if (user) {
       currentUser = {
         id: user.uid,
-        name: user.displayName,
-        avatar: user.photoURL || 'https://i.pravatar.cc/150?u=' + user.uid
+        name: user.displayName || 'Guest',
+        avatar: user.photoURL || 'https://ui-avatars.com/api/?name=Guest&background=6366f1&color=fff&rounded=true',
+        isAnonymous: user.isAnonymous || false
       };
-      if (authBtnTop) authBtnTop.classList.add('hidden');
-      if (userMenuTop) userMenuTop.classList.remove('hidden');
+      
       if (userAvatarTop) userAvatarTop.src = currentUser.avatar;
+      
+      if (authButtons) authButtons.classList.add('hidden');
+      if (userMenuTop) userMenuTop.classList.remove('hidden');
+      
       if (userNameDisplay) userNameDisplay.textContent = currentUser.name;
       
-      if (myProfileBtnHeader) myProfileBtnHeader.classList.remove('hidden');
+      if (myProfileBtnHeader) {
+        if (currentUser.isAnonymous) {
+          myProfileBtnHeader.classList.add('hidden');
+        } else {
+          myProfileBtnHeader.classList.remove('hidden');
+        }
+      }
     } else {
       currentUser = null;
-      if (authBtnTop) authBtnTop.classList.remove('hidden');
+      if (authButtons) authButtons.classList.remove('hidden');
       if (userMenuTop) userMenuTop.classList.add('hidden');
       
       if (myProfileBtnHeader) myProfileBtnHeader.classList.add('hidden');
