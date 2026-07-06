@@ -923,7 +923,7 @@ if(tiktokModeBtnHeader) tiktokModeBtnHeader.addEventListener('click', () => {
   } else {
     swipeFeed.classList.add('hidden');
     profilesGrid.classList.remove('hidden');
-    viewTitle.textContent = "All Creators";
+    viewTitle.textContent = "Creators";
     viewIcon.innerHTML = '<i class="fa-solid fa-users"></i>';
     renderProfiles(profiles);
     if (window.Capacitor && window.Capacitor.Plugins.AdMob && admobInitialized) {
@@ -1098,5 +1098,96 @@ function setupSwipeAutoplay() {
 
   document.querySelectorAll('.swipe-item').forEach(item => {
     observer.observe(item);
+  });
+}
+
+// --- CREATOR SEARCH ---
+const creatorSearchInput = document.getElementById('creator-search-input');
+const creatorSearchResults = document.getElementById('creator-search-results');
+
+if (creatorSearchInput && creatorSearchResults) {
+  creatorSearchInput.addEventListener('input', (e) => {
+    const val = e.target.value.toLowerCase().trim();
+    creatorSearchResults.innerHTML = '';
+    
+    if (!val) return;
+    
+    // Find the first matching profile
+    const match = profiles.find(p => {
+      const name = p.nickname || p.name || '';
+      return name.toLowerCase().includes(val);
+    });
+    
+    if (match) {
+      const div = document.createElement('div');
+      div.style.padding = '10px';
+      div.style.background = 'var(--surface-color)';
+      div.style.borderRadius = '8px';
+      div.style.cursor = 'pointer';
+      div.style.display = 'flex';
+      div.style.alignItems = 'center';
+      div.style.gap = '10px';
+      
+      const img = document.createElement('img');
+      img.src = match.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(match.nickname || match.name || 'User')}&background=random`;
+      img.onerror = function() { this.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(match.nickname || match.name || 'User')}&background=random`; };
+      img.style.width = '30px';
+      img.style.height = '30px';
+      img.style.borderRadius = '50%';
+      img.style.objectFit = 'cover';
+      
+      const span = document.createElement('span');
+      span.textContent = match.nickname || match.name;
+      
+      div.appendChild(img);
+      div.appendChild(span);
+      
+      div.addEventListener('click', () => {
+        // Reset search
+        creatorSearchInput.value = '';
+        creatorSearchResults.innerHTML = '';
+        
+        // Hide More Menu
+        moreMenuOverlay.classList.remove('active');
+        
+        // Switch to Creators View
+        isSwipeMode = false;
+        isLeaderboardMode = false;
+        isViewingFavorites = false;
+        
+        if (swipeFeed) swipeFeed.classList.add('hidden');
+        if (profilesGrid) profilesGrid.classList.remove('hidden');
+        if (emptyState) emptyState.style.display = 'none';
+        
+        document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+        
+        viewTitle.textContent = 'Creators';
+        viewIcon.innerHTML = '<i class="fa-solid fa-users"></i>';
+        
+        // Sort alphabetically or default
+        const sorted = [...profiles].sort((a,b) => (b.totalVideoLikes || 0) - (a.totalVideoLikes || 0));
+        renderProfiles(sorted);
+        
+        setTimeout(() => {
+          const btns = document.querySelectorAll('.card-favorite-btn');
+          for (let btn of btns) {
+            if (btn.getAttribute('data-id') === match.id) {
+              const row = btn.closest('.profile-row');
+              if (row) {
+                row.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                row.style.transition = 'box-shadow 0.5s';
+                row.style.boxShadow = '0 0 15px var(--accent-color)';
+                setTimeout(() => {
+                  row.style.boxShadow = 'none';
+                }, 2000);
+              }
+              break;
+            }
+          }
+        }, 100);
+      });
+      
+      creatorSearchResults.appendChild(div);
+    }
   });
 }
