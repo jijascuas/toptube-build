@@ -329,7 +329,14 @@ function listenToAuth() {
       userMenu.classList.add('hidden');
       myProfileBtnHeader.classList.add('hidden');
     }
-    renderProfiles();
+    if (isSwipeMode) {
+      renderSwipeFeed();
+    } else if (isLeaderboardMode) {
+      const sorted = [...profiles].sort((a,b) => (b.votes || 0) - (a.votes || 0));
+      renderProfiles(sorted);
+    } else {
+      renderProfiles();
+    }
   });
 }
 
@@ -811,7 +818,7 @@ if(leaderboardBtnHeader) leaderboardBtnHeader.addEventListener('click', () => {
   profilesGrid.classList.remove('hidden');
   
   if (isLeaderboardMode) {
-    viewTitle.textContent = "Leaderboard 🏆";
+    viewTitle.textContent = "Leaderboard";
     viewIcon.innerHTML = '<i class="fa-solid fa-trophy"></i>';
     setActiveNav('leaderboard-btn-header');
     const sorted = [...profiles].sort((a,b) => (b.votes || 0) - (a.votes || 0));
