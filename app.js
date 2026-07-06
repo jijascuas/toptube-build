@@ -283,20 +283,20 @@ function setupBackButton() {
 
 // --- FIREBASE AUTH ---
 function doGoogleSignIn() {
-  // Renewed login code: prefer popup, fallback to redirect if blocked
-  auth.signInWithPopup(googleProvider).then(result => {
-    console.log("Login successful:", result.user.displayName);
-    if (moreMenuOverlay) moreMenuOverlay.classList.add('hidden');
-  }).catch(err => {
-    console.error("Popup sign in error:", err);
-    if (err.code === 'auth/popup-blocked' || err.code === 'auth/operation-not-supported-in-this-environment') {
-      auth.signInWithRedirect(googleProvider).catch(redirectErr => {
-        alert("Error de redirección: " + redirectErr.message);
-      });
-    } else {
+  if (isCapacitorNative()) {
+    auth.signInWithRedirect(googleProvider).catch(err => {
+      console.error("Redirect login failed", err);
+      alert("Error de redirección: " + err.message);
+    });
+  } else {
+    auth.signInWithPopup(googleProvider).then(result => {
+      console.log("Login successful:", result.user.displayName);
+      if (moreMenuOverlay) moreMenuOverlay.classList.add('hidden');
+    }).catch(err => {
+      console.error("Popup sign in error:", err);
       alert("Error de inicio de sesión: " + err.message);
-    }
-  });
+    });
+  }
 }
 
 if (authBtn) {
