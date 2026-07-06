@@ -128,11 +128,11 @@ let isViewingFavorites = false;
 let myProfileLinks = [];
 
 // --- DOM ELEMENTS ---
-const authBtn = document.getElementById('auth-btn');
-const authBtnMobile = document.getElementById('auth-btn-mobile');
-const userMenu = document.getElementById('user-menu');
-const logoutBtn = document.getElementById('logout-btn');
-const userAvatarHeader = document.getElementById('user-avatar-header');
+const authBtnTop = document.getElementById('auth-btn-top');
+const userMenuTop = document.getElementById('user-menu-top');
+const logoutBtnTop = document.getElementById('logout-btn-top');
+const userAvatarTop = document.getElementById('user-avatar-top');
+const userNameDisplay = document.getElementById('user-name-display');
 const myProfileBtnHeader = document.getElementById('my-profile-btn-header');
 const favoritesBtnHeader = document.getElementById('favorites-btn-header');
 const profilesGrid = document.getElementById('profiles-grid');
@@ -299,19 +299,17 @@ function doGoogleSignIn() {
   }
 }
 
-if (authBtn) {
-  authBtn.addEventListener('click', doGoogleSignIn);
-}
-if (authBtnMobile) {
-  authBtnMobile.addEventListener('click', () => {
-    moreMenuOverlay.classList.add('hidden');
+if (authBtnTop) {
+  authBtnTop.addEventListener('click', () => {
     doGoogleSignIn();
   });
 }
 
-logoutBtn.addEventListener('click', () => {
-  auth.signOut();
-});
+if (logoutBtnTop) {
+  logoutBtnTop.addEventListener('click', () => {
+    auth.signOut();
+  });
+}
 
 function listenToAuth() {
   auth.onAuthStateChanged(user => {
@@ -321,21 +319,18 @@ function listenToAuth() {
         name: user.displayName,
         avatar: user.photoURL || 'https://i.pravatar.cc/150?u=' + user.uid
       };
-      if (authBtn) authBtn.classList.add('hidden');
-      if (authBtnMobile) authBtnMobile.classList.add('hidden');
-      userMenu.classList.remove('hidden');
-      userAvatarHeader.src = currentUser.avatar;
-      
-      const userNameDisplay = document.getElementById('user-name-display');
+      if (authBtnTop) authBtnTop.classList.add('hidden');
+      if (userMenuTop) userMenuTop.classList.remove('hidden');
+      if (userAvatarTop) userAvatarTop.src = currentUser.avatar;
       if (userNameDisplay) userNameDisplay.textContent = currentUser.name;
       
-      myProfileBtnHeader.classList.remove('hidden');
+      if (myProfileBtnHeader) myProfileBtnHeader.classList.remove('hidden');
     } else {
       currentUser = null;
-      if (authBtn) authBtn.classList.remove('hidden');
-      if (authBtnMobile) authBtnMobile.classList.remove('hidden');
-      userMenu.classList.add('hidden');
-      myProfileBtnHeader.classList.add('hidden');
+      if (authBtnTop) authBtnTop.classList.remove('hidden');
+      if (userMenuTop) userMenuTop.classList.add('hidden');
+      
+      if (myProfileBtnHeader) myProfileBtnHeader.classList.add('hidden');
     }
     if (isSwipeMode) {
       renderSwipeFeed();
