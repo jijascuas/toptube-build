@@ -141,6 +141,14 @@ const emptyState = document.getElementById('empty-state');
 const viewTitle = document.getElementById('view-title');
 const viewIcon = document.getElementById('view-icon');
 
+// Auth Modal
+const authModal = document.getElementById('auth-modal');
+const closeAuthModal = document.getElementById('close-auth-modal');
+const authEmail = document.getElementById('auth-email');
+const authPassword = document.getElementById('auth-password');
+const loginEmailBtn = document.getElementById('login-email-btn');
+const registerEmailBtn = document.getElementById('register-email-btn');
+const modalGoogleBtn = document.getElementById('modal-google-btn');
 // Profile Modal
 const profileModal = document.getElementById('profile-setup-modal');
 const profileCloseBtn = document.getElementById('profile-close');
@@ -817,17 +825,6 @@ init();
 const swipeFeed = document.getElementById('swipe-feed');
 const tiktokModeBtnHeader = document.getElementById('tiktok-mode-btn-header');
 const leaderboardBtnHeader = document.getElementById('leaderboard-btn-header');
-
-// Auth Modal
-const authModal = document.getElementById('auth-modal');
-const closeAuthModal = document.getElementById('close-auth-modal');
-const authEmail = document.getElementById('auth-email');
-const authPassword = document.getElementById('auth-password');
-const loginEmailBtn = document.getElementById('login-email-btn');
-const registerEmailBtn = document.getElementById('register-email-btn');
-const modalGoogleBtn = document.getElementById('modal-google-btn');
-
-if (closeAuthModal) closeAuthModal.addEventListener('click', () => authModal.classList.add('hidden'));
 
 let isSwipeMode = true;
 let isLeaderboardMode = false;
