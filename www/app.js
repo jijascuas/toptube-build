@@ -354,11 +354,6 @@ function doGoogleSignIn() {
   }
 }
 
-if (authBtnTop) {
-  authBtnTop.addEventListener('click', () => {
-    doGoogleSignIn();
-  });
-}
 
 if (logoutBtnTop) {
   logoutBtnTop.addEventListener('click', () => {
