@@ -335,7 +335,7 @@ function listenToAuth() {
     if (isSwipeMode) {
       renderSwipeFeed();
     } else if (isLeaderboardMode) {
-      const sorted = [...profiles].sort((a,b) => (b.votes || 0) - (a.votes || 0));
+      const sorted = [...profiles].sort((a,b) => (b.totalVideoLikes || 0) - (a.totalVideoLikes || 0));
       renderProfiles(sorted);
     } else {
       renderProfiles();
@@ -353,6 +353,16 @@ function fetchProfiles() {
     profiles.forEach(p => {
       if (!p.favoritedBy) p.favoritedBy = [];
       if (typeof p.favoritesCount !== 'number') p.favoritesCount = p.favoritedBy.length;
+      
+      let sumLikes = 0;
+      if (p.links && Array.isArray(p.links)) {
+        p.links.forEach(link => {
+          if (link.likedBy && Array.isArray(link.likedBy)) {
+            sumLikes += link.likedBy.length;
+          }
+        });
+      }
+      p.totalVideoLikes = sumLikes;
     });
     if (isSwipeMode) {
       profilesGrid.classList.add('hidden');
@@ -383,12 +393,12 @@ favoritesBtnHeader.addEventListener('click', () => {
   
   if (isViewingFavorites) {
     favoritesBtnHeader.style.color = '#eab308';
-    viewTitle.textContent = 'My Favorites';
-    viewIcon.innerHTML = '🌟';
+    viewTitle.textContent = 'Favorites';
+    viewIcon.innerHTML = '<i class="fa-solid fa-star"></i>';
     setActiveNav('favorites-btn-header');
   } else {
     favoritesBtnHeader.style.color = '';
-    viewTitle.textContent = 'All Creators';
+    viewTitle.textContent = 'Creators';
     viewIcon.innerHTML = '<i class="fa-solid fa-users"></i>';
   }
   renderProfiles();
@@ -824,10 +834,10 @@ if(leaderboardBtnHeader) leaderboardBtnHeader.addEventListener('click', () => {
     viewTitle.textContent = "Leaderboard";
     viewIcon.innerHTML = '<i class="fa-solid fa-trophy"></i>';
     setActiveNav('leaderboard-btn-header');
-    const sorted = [...profiles].sort((a,b) => (b.votes || 0) - (a.votes || 0));
+    const sorted = [...profiles].sort((a,b) => (b.totalVideoLikes || 0) - (a.totalVideoLikes || 0));
     renderProfiles(sorted);
   } else {
-    viewTitle.textContent = "All Creators";
+    viewTitle.textContent = "Creators";
     viewIcon.innerHTML = '<i class="fa-solid fa-users"></i>';
     renderProfiles(profiles);
   }
