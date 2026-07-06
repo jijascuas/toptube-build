@@ -82,16 +82,19 @@
         <button id="my-profile-btn-header" class="more-menu-item hidden">
           <i class="fa-solid fa-video"></i> Edit Profile & Upload
         </button>
+        <div class="more-menu-item" style="flex-direction: column; align-items: stretch; padding: 10px; cursor: default;">
+          <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="creator-search-input" placeholder="Search creators..." autocomplete="off" style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-color); color: var(--text-color);" />
+          </div>
+          <div id="creator-search-results" style="display: flex; flex-direction: column; max-height: 150px; overflow-y: auto; margin-top: 10px; gap: 5px;"></div>
+        </div>
         <a href="https://lnk.bio/jijascuasgames" target="_blank" class="more-menu-item">
           <i class="fa-solid fa-gamepad"></i> jijascuasgames
         </a>
         <a href="privacy.html" target="_blank" class="more-menu-item" id="privacy-policy-btn">
           <i class="fa-solid fa-shield-halved"></i> Privacy Policy
         </a>
-        <div class="more-menu-item" id="search-mobile-wrap">
-          <i class="fa-solid fa-magnifying-glass"></i>
-          <input type="text" id="search-input-mobile" placeholder="Search creators..." autocomplete="off" />
-        </div>
       </div>
     </div>
   </div>
