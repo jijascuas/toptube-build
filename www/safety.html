@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Child Safety Standards — TopTube</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            line-height: 1.7;
+            font-size: 16px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        a {
+            color: #818cf8;
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        a:hover {
+            color: #a5b4fc;
+            text-decoration: underline;
+        }
+
+        /* Back Button */
+        .back-bar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background-color: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(99, 102, 241, 0.15);
+            padding: 12px 24px;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #818cf8;
+            text-decoration: none;
+            transition: color 0.2s ease, transform 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: #a5b4fc;
+            text-decoration: none;
+            transform: translateX(-2px);
+        }
+
+        .back-link svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        /* Container */
+        .container {
+            max-width: 780px;
+            margin: 0 auto;
+            padding: 48px 24px 80px;
+        }
+
+        /* Header */
+        .header {
+            margin-bottom: 48px;
+            padding-bottom: 32px;
+            border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        .header h1 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 12px;
+            letter-spacing: -0.025em;
+        }
+
+        .header .accent {
+            color: #6366f1;
+        }
+
+        .header .meta {
+            font-size: 14px;
+            color: #94a3b8;
+        }
+
+        .header .meta span {
+            color: #cbd5e1;
+            font-weight: 500;
+        }
+
+        /* Sections */
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section h2 {
+            font-size: 1.35rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #6366f1;
+            display: inline-block;
+        }
+
+        .section p {
+            margin-bottom: 14px;
+            color: #cbd5e1;
+        }
+
+        .section ul {
+            margin: 12px 0 16px 24px;
+            color: #cbd5e1;
+        }
+
+        .section ul li {
+            margin-bottom: 8px;
+            padding-left: 4px;
+        }
+
+        /* Contact section */
+        .contact-box {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(99, 102, 241, 0.04));
+            border: 1px solid rgba(99, 102, 241, 0.25);
+            border-radius: 12px;
+            padding: 28px 28px;
+            margin-top: 16px;
+            text-align: center;
+        }
+
+        .contact-box .email {
+            display: inline-block;
+            margin-top: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #818cf8;
+            padding: 8px 20px;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .contact-box .email:hover {
+            background-color: rgba(99, 102, 241, 0.1);
+            color: #a5b4fc;
+            text-decoration: none;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding-top: 40px;
+            border-top: 1px solid rgba(99, 102, 241, 0.12);
+            color: #64748b;
+            font-size: 13px;
+        }
+
+        .footer .app-name {
+            color: #6366f1;
+            font-weight: 600;
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .container {
+                padding: 32px 18px 60px;
+            }
+            .header h1 {
+                font-size: 1.75rem;
+            }
+            .section h2 {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Back Bar -->
+    <div class="back-bar">
+        <a href="javascript:history.back()" class="back-link">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+            </svg>
+            Back
+        </a>
+    </div>
+
+    <div class="container">
+
+        <!-- Header -->
+        <div class="header">
+            <h1>Child Safety Standards<span class="accent">.</span></h1>
+            <p class="meta"><span>TopTube</span> by JijascuasGames &mdash; Last updated: <span>July 2026</span></p>
+        </div>
+
+        <!-- Introduction -->
+        <div class="section">
+            <p>
+                At <strong>JijascuasGames</strong>, the safety of all our users, especially children, is our highest priority. We maintain a zero-tolerance policy towards any content or behavior that promotes, facilitates, or involves Child Sexual Abuse Material (CSAM) or the exploitation of minors.
+            </p>
+        </div>
+
+        <!-- 1. Zero Tolerance Policy -->
+        <div class="section">
+            <h2>1. Zero Tolerance Policy</h2>
+            <p>
+                TopTube strictly prohibits the uploading, sharing, viewing, or promoting of any material that depicts or encourages the sexual abuse or exploitation of children. Any user found violating this policy will face immediate and permanent account suspension.
+            </p>
+        </div>
+
+        <!-- 2. Reporting Violations -->
+        <div class="section">
+            <h2>2. Reporting Violations</h2>
+            <p>
+                We empower our community to help keep TopTube safe. If you encounter any content or user behavior that you believe violates our child safety standards or involves CSAM, you must report it immediately.
+            </p>
+            <ul>
+                <li><strong>In-App Reporting:</strong> You can report inappropriate content directly within the app using the reporting tools provided on user profiles or specific content items.</li>
+                <li><strong>Direct Email Contact:</strong> You can report severe safety concerns directly to our designated safety contact at <a href="mailto:jijascuas@gmail.com">jijascuas@gmail.com</a>.</li>
+            </ul>
+        </div>
+
+        <!-- 3. Compliance and Law Enforcement -->
+        <div class="section">
+            <h2>3. Compliance and Law Enforcement</h2>
+            <p>
+                We comply with all applicable local, national, and international laws regarding child safety. 
+            </p>
+            <p>
+                In the event that we detect or are made aware of CSAM on our platform, we will immediately preserve the related evidence, remove the offending content, terminate the associated accounts, and proactively report the incident to the appropriate law enforcement agencies and specialized organizations (such as the National Center for Missing & Exploited Children - NCMEC), as required by law.
+            </p>
+        </div>
+
+        <!-- 4. Designated Safety Contact -->
+        <div class="section">
+            <h2>4. Designated Safety Contact</h2>
+            <p>For any questions, concerns, or to report incidents related to child safety, please contact our designated safety representative:</p>
+            <div class="contact-box">
+                <p><strong>JijascuasGames Safety Team</strong></p>
+                <a href="mailto:jijascuas@gmail.com" class="email">jijascuas@gmail.com</a>
+            </div>
+            <p style="margin-top: 20px; text-align: center; font-size: 14px; color: #94a3b8;">
+                The designated contact person is prepared and able to discuss our compliance and practices regarding the prevention of child sexual abuse material on this application.
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>&copy; 2026 <span class="app-name">TopTube</span> by JijascuasGames. All rights reserved.</p>
+        </div>
+
+    </div>
+
+</body>
+</html>
