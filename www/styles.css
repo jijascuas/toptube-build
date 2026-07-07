@@ -1005,24 +1005,26 @@ body.has-ad-banner #main-content {
 
 .swipe-overlay-info {
   position: absolute;
-  bottom: 70px;
+  top: 120px;
   left: 15px;
-  right: 60px;
+  right: 15px;
   z-index: 10;
-  background: rgba(0,0,0,0.5);
-  padding: 12px;
+  background: rgba(0,0,0,0.4);
+  padding: 8px 12px;
   border-radius: 10px;
   backdrop-filter: blur(5px);
+  pointer-events: none;
 }
 
 .swipe-actions {
   position: absolute;
-  bottom: 70px;
+  bottom: 95px;
   right: 12px;
   display: flex;
   flex-direction: column;
   gap: 16px;
   z-index: 10;
+  pointer-events: none;
 }
 
 .action-btn {
@@ -1039,6 +1041,7 @@ body.has-ad-banner #main-content {
   cursor: pointer;
   transition: all 0.3s;
   backdrop-filter: blur(4px);
+  pointer-events: auto;
 }
 .action-btn:hover {
   transform: scale(1.1);
@@ -1128,9 +1131,7 @@ body.widget-mode .profile-card {
 
 
 
-  #more-menu-overlay {
-    display: none !important;
-  }
+  /* #more-menu-overlay was previously hidden here, but we need it since the header was removed */
 
   #main-header {
     height: 64px;

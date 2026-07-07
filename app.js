@@ -11,6 +11,17 @@ function isCapacitorNative() {
 // --- ADMOB LOGIC ---
 let admobInitialized = false;
 let reelsViewed = 0;
+let videoViewingTimeMs = 0;
+
+// Accumulate viewing time only when in swipe mode
+setInterval(() => {
+  if (typeof isSwipeMode !== 'undefined' && isSwipeMode && admobInitialized) {
+    videoViewingTimeMs += 1000;
+    if (videoViewingTimeMs >= 3 * 60 * 1000) { // 3 minutes
+      showInterstitialAd();
+    }
+  }
+}, 1000);
 
 const BANNER_AD_ID = 'ca-app-pub-4159023709825629/7216545964';
 const INTERSTITIAL_AD_ID = 'ca-app-pub-4159023709825629/4934419013';
@@ -94,6 +105,9 @@ async function showInterstitialAd() {
     await AdMob.showInterstitial();
     // Prepare next one
     setTimeout(() => prepareInterstitialAd(), 2000);
+    // Reset counters
+    reelsViewed = 0;
+    videoViewingTimeMs = 0;
   } catch (e) {
     console.error('Show interstitial error:', e);
     // Try to re-prepare
@@ -104,7 +118,7 @@ async function showInterstitialAd() {
 // Show interstitial every N reels viewed
 function onReelViewed() {
   reelsViewed++;
-  if (reelsViewed > 0 && reelsViewed % 5 === 0) {
+  if (reelsViewed >= 10) {
     showInterstitialAd();
   }
 }
@@ -135,6 +149,7 @@ const logoutBtnTop = document.getElementById('logout-btn-top');
 const userAvatarTop = document.getElementById('user-avatar-top');
 const userNameDisplay = document.getElementById('user-name-display');
 const myProfileBtnHeader = document.getElementById('my-profile-btn-header');
+const deleteAccountBtn = document.getElementById('delete-account-btn');
 const favoritesBtnHeader = document.getElementById('favorites-btn-header');
 const profilesGrid = document.getElementById('profiles-grid');
 const emptyState = document.getElementById('empty-state');
@@ -160,10 +175,6 @@ const addLinkBtn = document.getElementById('add-link-btn');
 const addedLinksList = document.getElementById('added-links-list');
 const linkErrorMsg = document.getElementById('link-error-msg');
 
-// Age Modal
-const ageModal = document.getElementById('age-modal');
-const ageConfirmBtn = document.getElementById('age-confirm-btn');
-const ageCancelBtn = document.getElementById('age-cancel-btn');
 
 // Embed Modal
 const embedModal = document.getElementById('embed-modal');
@@ -351,12 +362,31 @@ function doGoogleSignIn() {
       console.error("Popup sign in error:", err);
       alert("Error de inicio de sesión: " + err.message);
     });
-  }
+}
 }
 
 if (logoutBtnTop) {
   logoutBtnTop.addEventListener('click', () => {
     auth.signOut();
+  });
+}
+
+if (deleteAccountBtn) {
+  deleteAccountBtn.addEventListener('click', () => {
+    if (confirm("Are you sure you want to delete your account? This action cannot be undone.")) {
+      const user = auth.currentUser;
+      if (user) {
+        user.delete().then(() => {
+          alert("Account deleted successfully.");
+        }).catch((error) => {
+          if (error.code === 'auth/requires-recent-login') {
+            alert("Please log out and log back in to delete your account.");
+          } else {
+            alert("Error deleting account: " + error.message);
+          }
+        });
+      }
+    }
   });
 }
 
@@ -380,8 +410,10 @@ function listenToAuth() {
       if (myProfileBtnHeader) {
         if (currentUser.isAnonymous) {
           myProfileBtnHeader.classList.add('hidden');
+          if (deleteAccountBtn) deleteAccountBtn.classList.add('hidden');
         } else {
           myProfileBtnHeader.classList.remove('hidden');
+          if (deleteAccountBtn) deleteAccountBtn.classList.remove('hidden');
         }
       }
     } else {
@@ -390,6 +422,7 @@ function listenToAuth() {
       if (userMenuTop) userMenuTop.classList.add('hidden');
       
       if (myProfileBtnHeader) myProfileBtnHeader.classList.add('hidden');
+      if (deleteAccountBtn) deleteAccountBtn.classList.add('hidden');
     }
     if (isSwipeMode) {
       renderSwipeFeed();
@@ -774,23 +807,6 @@ profileForm.addEventListener('submit', (e) => {
   });
 });
 
-// --- AGE MODAL LOGIC ---
-ageCancelBtn.addEventListener('click', () => {
-  pendingAdultUrl = null;
-  pendingEmbedType = null;
-  pendingIsEmbeddable = false;
-  ageModal.classList.add('hidden');
-});
-
-ageConfirmBtn.addEventListener('click', () => {
-  if (pendingAdultUrl) {
-    openLinkInApp(pendingAdultUrl, pendingEmbedType, pendingIsEmbeddable);
-  }
-  pendingAdultUrl = null;
-  pendingEmbedType = null;
-  pendingIsEmbeddable = false;
-  ageModal.classList.add('hidden');
-});
 
 // --- PRIVACY MODAL LOGIC ---
 if (privacyPolicyBtn) {
@@ -995,15 +1011,11 @@ function renderSwipeFeed() {
     const item = document.createElement('div');
     item.className = 'swipe-item';
     item.dataset.videoid = videoId;
+    item.dataset.embedUrl = embedUrl;
+    item.dataset.index = index;
 
     item.innerHTML = `
-      <iframe 
-        id="swipe-iframe-${index}"
-        src="${embedUrl}" 
-        allowfullscreen 
-        allow="autoplay; encrypted-media"
-        style="width:100%;height:100%;border:none;pointer-events:all;"
-      ></iframe>
+      <div class="iframe-container" id="iframe-container-${index}" style="width:100%;height:100%;"></div>
       <div class="swipe-overlay-info">
         <h3 style="margin:0 0 4px 0; font-size:1.1rem; text-shadow:0 1px 4px rgba(0,0,0,0.8);">@${v.profile.nickname || 'Unknown'}</h3>
       </div>
@@ -1070,24 +1082,44 @@ window.toggleSwipeMute = function(index) {
 function setupSwipeAutoplay() {
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
-      const iframe = entry.target.querySelector('iframe');
-      if (!iframe) return;
+      const item = entry.target;
+      const container = item.querySelector('.iframe-container');
+      
       if (entry.isIntersecting) {
-        iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
-        if (!window._swipeMuted) {
-          setTimeout(() => {
-            iframe.contentWindow.postMessage('{"event":"command","func":"unMute","args":""}', '*');
-            iframe.contentWindow.postMessage('{"event":"command","func":"setVolume","args":[100]}', '*');
-          }, 500);
+        if (container && !container.innerHTML) {
+          const embedUrl = item.dataset.embedUrl;
+          const index = item.dataset.index;
+          container.innerHTML = `<iframe 
+            id="swipe-iframe-${index}"
+            src="${embedUrl}" 
+            allowfullscreen 
+            allow="autoplay; encrypted-media"
+            style="width:100%;height:100%;border:none;pointer-events:all;"
+          ></iframe>`;
         }
-        const btn = entry.target.querySelector('[id^="unmute-btn-"]');
+        
+        const iframe = item.querySelector('iframe');
+        if (iframe) {
+          setTimeout(() => {
+            if (!iframe.contentWindow) return;
+            iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+            if (!window._swipeMuted) {
+              iframe.contentWindow.postMessage('{"event":"command","func":"unMute","args":""}', '*');
+              iframe.contentWindow.postMessage('{"event":"command","func":"setVolume","args":[100]}', '*');
+            }
+          }, 800); // Give iframe some time to initialize
+        }
+
+        const btn = item.querySelector('[id^="unmute-btn-"]');
         if(btn) {
           btn.querySelector('i').className = window._swipeMuted ? 'fa-solid fa-volume-xmark' : 'fa-solid fa-volume-high';
         }
         // Count reel view for interstitial trigger
         onReelViewed();
       } else {
-        iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+        if (container) {
+          container.innerHTML = '';
+        }
       }
     });
   }, {
@@ -1148,7 +1180,7 @@ if (creatorSearchInput && creatorSearchResults) {
         creatorSearchResults.innerHTML = '';
         
         // Hide More Menu
-        moreMenuOverlay.classList.remove('active');
+        moreMenuOverlay.classList.add('hidden');
         
         // Switch to Creators View
         isSwipeMode = false;
