@@ -1,5 +1,5 @@
 /**
- * TopTube - Social Directory
+ * TOPTUBE - Social Directory
  * Native Android Optimized with AdMob + Capacitor Bridge
  */
 
@@ -931,7 +931,7 @@ exportNotesBtn.addEventListener('click', () => {
 
   if (isCapacitorNative() && window.Capacitor.Plugins.Share) {
     window.Capacitor.Plugins.Share.share({
-      title: `TopTube Notes - ${currentVideoId}`,
+      title: `TOPTUBE Notes - ${currentVideoId}`,
       text: markdown,
       dialogTitle: 'Export Notes'
     }).catch(console.error);
@@ -940,7 +940,7 @@ exportNotesBtn.addEventListener('click', () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `toptube_notes_${currentVideoId}.md`;
+    a.download = `TOPTUBE_notes_${currentVideoId}.md`;
     a.click();
     URL.revokeObjectURL(url);
   }
