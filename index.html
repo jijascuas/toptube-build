@@ -43,10 +43,7 @@
         <!-- Dynamic content goes here -->
       </div>
       
-      <!-- SWIPE FEED (TIKTOK MODE) -->
-      <div id="swipe-feed" class="hidden">
-        <!-- Vertical scroll videos -->
-      </div>
+      <!-- SWIPE FEED REMOVED -->
       
       <!-- EMPTY STATE -->
       <div id="empty-state" class="hidden">
@@ -58,17 +55,14 @@
 
   <!-- BOTTOM NAVIGATION BAR (Mobile) -->
   <nav id="bottom-nav">
-    <button id="tiktok-mode-btn-header" class="nav-item active" title="Shorts Feed">
-      <i class="fa-solid fa-mobile-screen"></i>
-      <span>Shorts</span>
+
+    <button id="leaderboard-btn-header" class="nav-item" title="Leaderboard">
+      <i class="fa-solid fa-trophy"></i>
+      <span>Leaderboard</span>
     </button>
     <button id="favorites-btn-header" class="nav-item" title="Favorites">
       <i class="fa-solid fa-star"></i>
       <span>Favorites</span>
-    </button>
-    <button id="leaderboard-btn-header" class="nav-item" title="Leaderboard">
-      <i class="fa-solid fa-trophy"></i>
-      <span>Leaderboard</span>
     </button>
     <button id="nav-more-btn" class="nav-item" title="More">
       <i class="fa-solid fa-bars"></i>
@@ -96,6 +90,9 @@
         <a href="privacy.html" target="_blank" class="more-menu-item" id="privacy-policy-btn">
           <i class="fa-solid fa-shield-halved"></i> Privacy Policy
         </a>
+        <button id="set-api-key-btn" class="more-menu-item" style="color: #6366f1;">
+          <i class="fa-solid fa-key"></i> Set Gemini API Key
+        </button>
         <button id="delete-account-btn" class="more-menu-item hidden" style="color: #ef4444;">
           <i class="fa-solid fa-trash-can"></i> Delete Account
         </button>
@@ -140,12 +137,33 @@
     </div>
   </div>
 
-  <!-- EMBEDDED VIEWER MODAL -->
-  <div id="embed-modal" class="modal-overlay hidden">
-    <div class="modal-box embed-modal-box">
-      <button class="modal-close" id="embed-close"><i class="fa-solid fa-xmark"></i></button>
-      <div id="embed-container">
-        <!-- iframe will be injected here -->
+  <!-- LEARNING MODE MODAL -->
+  <div id="learning-modal" class="modal-overlay hidden">
+    <div class="learning-container">
+      <div class="learning-header">
+        <h2><i class="fa-solid fa-graduation-cap"></i> Learning Mode</h2>
+        <button class="modal-close" id="learning-close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="learning-body">
+        <div class="video-section">
+          <div id="yt-player"></div>
+        </div>
+        <div class="notes-section">
+          <div class="notes-actions">
+            <button id="ai-summary-btn" class="btn-secondary"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Summary</button>
+            <button id="export-notes-btn" class="btn-secondary"><i class="fa-solid fa-file-export"></i> Export .md</button>
+          </div>
+          <div id="ai-summary-container" class="hidden">
+            <div class="summary-content" id="summary-content"></div>
+          </div>
+          <div class="notes-list" id="notes-list">
+            <!-- Notes injected here -->
+          </div>
+          <div class="add-note-container">
+            <textarea id="note-input" placeholder="Type your note here..."></textarea>
+            <button id="save-note-btn" class="btn-primary"><i class="fa-solid fa-plus"></i> Add Note @ <span id="current-video-time">0:00</span></button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -207,6 +225,8 @@
     </div>
   </div>
 
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -13,9 +13,20 @@ let admobInitialized = false;
 let reelsViewed = 0;
 let videoViewingTimeMs = 0;
 
-// Accumulate viewing time only when in swipe mode
+// Accumulate viewing time
 setInterval(() => {
-  if (typeof isSwipeMode !== 'undefined' && isSwipeMode && admobInitialized) {
+  if (!admobInitialized) return;
+  
+  let isPlaying = false;
+  if (typeof isSwipeMode !== 'undefined' && isSwipeMode) {
+    isPlaying = true;
+  } else if (!learningModal.classList.contains('hidden') && typeof ytPlayer !== 'undefined' && ytPlayer && typeof ytPlayer.getPlayerState === 'function') {
+    if (ytPlayer.getPlayerState() === 1) { // 1 = PLAYING
+      isPlaying = true;
+    }
+  }
+
+  if (isPlaying) {
     videoViewingTimeMs += 1000;
     if (videoViewingTimeMs >= 3 * 60 * 1000) { // 3 minutes
       showInterstitialAd();
@@ -62,7 +73,7 @@ async function showBannerAd() {
       adId: BANNER_AD_ID,
       adSize: 'ADAPTIVE_BANNER',
       position: 'BOTTOM_CENTER',
-      margin: 0,
+      margin: 60,
       isTesting: false
     });
     console.log('Banner ad shown');
@@ -176,13 +187,24 @@ const addedLinksList = document.getElementById('added-links-list');
 const linkErrorMsg = document.getElementById('link-error-msg');
 
 
-// Embed Modal
-const embedModal = document.getElementById('embed-modal');
-const embedCloseBtn = document.getElementById('embed-close');
-const embedContainer = document.getElementById('embed-container');
-let pendingAdultUrl = null;
-let pendingEmbedType = null;
-let pendingIsEmbeddable = false;
+// Learning Modal
+const learningModal = document.getElementById('learning-modal');
+const learningCloseBtn = document.getElementById('learning-close');
+const notesList = document.getElementById('notes-list');
+const noteInput = document.getElementById('note-input');
+const saveNoteBtn = document.getElementById('save-note-btn');
+const currentVideoTimeSpan = document.getElementById('current-video-time');
+const exportNotesBtn = document.getElementById('export-notes-btn');
+const aiSummaryBtn = document.getElementById('ai-summary-btn');
+const aiSummaryContainer = document.getElementById('ai-summary-container');
+const summaryContent = document.getElementById('summary-content');
+
+let ytPlayer;
+let currentVideoId = null;
+let currentVideoOwnerId = null;
+let notesInterval;
+let currentNotes = [];
+let lastAiSummaryMarkdown = null;
 
 // Privacy Modal
 const privacyPolicyBtn = document.getElementById('privacy-policy-btn');
@@ -193,6 +215,7 @@ const privacyClose = document.getElementById('privacy-close');
 const moreMenuOverlay = document.getElementById('more-menu-overlay');
 const moreMenuClose = document.getElementById('more-menu-close');
 const navMoreBtn = document.getElementById('nav-more-btn');
+const setApiKeyBtn = document.getElementById('set-api-key-btn');
 
 // Bottom nav
 const bottomNav = document.getElementById('bottom-nav');
@@ -463,7 +486,10 @@ function fetchProfiles() {
       viewIcon.innerHTML = '<i class="fa-solid fa-mobile-screen"></i>';
       renderSwipeFeed();
     } else if (isLeaderboardMode) {
-      const sorted = [...profiles].sort((a,b) => (b.votes || 0) - (a.votes || 0));
+      viewTitle.textContent = "Leaderboard";
+      viewIcon.innerHTML = '<i class="fa-solid fa-trophy"></i>';
+      setActiveNav('leaderboard-btn-header');
+      const sorted = [...profiles].sort((a,b) => (b.totalVideoLikes || 0) - (a.totalVideoLikes || 0));
       renderProfiles(sorted);
     } else {
       renderProfiles();
@@ -535,7 +561,7 @@ function renderProfiles(profilesList = profiles) {
       const row = document.createElement('div');
       row.className = 'profile-row';
       
-      let platformLinks = (p.links || []).filter(l => l.platformId === 'youtube').slice(0, 10);
+      let platformLinks = (p.links || []).filter(l => l.platformId === 'youtube' && (!l.isPrivate || (currentUser && currentUser.id === p.id))).slice(0, 10);
       if (platformLinks.length === 0) return;
       
       let linksHTML = platformLinks.map((link, idx) => {
@@ -546,7 +572,7 @@ function renderProfiles(profilesList = profiles) {
         const likeCount = likedBy.length;
         return `
           <div class="video-card">
-            <a href="#" data-url="${link.url}" data-pid="youtube" data-embeddable="true" class="yt-thumbnail-pill" title="Watch video">
+            <a href="#" data-url="${link.url}" data-pid="youtube" data-profile-id="${p.id}" data-embeddable="true" class="yt-thumbnail-pill" title="Watch video">
               <img src="${thumbUrl}" alt="YouTube Thumbnail" />
             </a>
             <div class="video-actions">
@@ -585,7 +611,8 @@ function renderProfiles(profilesList = profiles) {
         e.preventDefault();
         const url = btn.getAttribute('data-url');
         const pid = btn.getAttribute('data-pid');
-        openLinkInApp(url, pid, true);
+        const ownerId = btn.getAttribute('data-profile-id');
+        openLinkInApp(url, pid, true, ownerId);
       });
     });
 
@@ -664,37 +691,310 @@ function toggleVideoLike(profileId, url) {
   });
 }
 
-// --- EMBED VIEWER LOGIC ---
-function openLinkInApp(url, platformId, isEmbeddable) {
-  if (!isEmbeddable) {
+// --- YOUTUBE API & LEARNING MODE LOGIC ---
+function onYouTubeIframeAPIReady() {
+  console.log("YouTube API Ready");
+}
+
+function openLinkInApp(url, platformId, isEmbeddable, ownerId = null) {
+  if (platformId !== 'youtube') {
     window.open(url, '_blank');
     return;
   }
 
-  let embedUrl = url;
-  
-  if (platformId === 'youtube') {
-    if (url.includes('watch?v=')) {
-      const vidId = url.split('watch?v=')[1].split('&')[0];
-      embedUrl = `https://www.youtube.com/embed/${vidId}`;
-    } else if (url.includes('youtu.be/')) {
-      const vidId = url.split('youtu.be/')[1].split('?')[0];
-      embedUrl = `https://www.youtube.com/embed/${vidId}`;
-    }
+  let vidId = null;
+  if (url.includes('watch?v=')) {
+    vidId = url.split('watch?v=')[1].split('&')[0];
+  } else if (url.includes('youtu.be/')) {
+    vidId = url.split('youtu.be/')[1].split('?')[0];
   }
 
-  embedContainer.innerHTML = `<iframe src="${embedUrl}" allowfullscreen allow="autoplay; encrypted-media"></iframe>`;
-  embedModal.classList.remove('hidden');
+  if (!vidId) return;
+  currentVideoId = vidId;
+  currentVideoOwnerId = ownerId;
+
+  learningModal.classList.remove('hidden');
+  aiSummaryContainer.classList.add('hidden');
+  summaryContent.innerHTML = '';
+  noteInput.value = '';
+
   if (window.Capacitor && window.Capacitor.Plugins.AdMob && admobInitialized) {
     window.Capacitor.Plugins.AdMob.hideBanner().catch(console.error);
   }
+
+  if (ytPlayer) {
+    ytPlayer.loadVideoById(vidId);
+  } else {
+    ytPlayer = new YT.Player('yt-player', {
+      height: '100%',
+      width: '100%',
+      videoId: vidId,
+      playerVars: { 'autoplay': 1, 'modestbranding': 1, 'rel': 0 },
+      events: {
+        'onStateChange': onPlayerStateChange
+      }
+    });
+  }
+
+  loadNotesForVideo(vidId, ownerId);
+  startNotesInterval();
 }
 
-embedCloseBtn.addEventListener('click', () => {
-  embedContainer.innerHTML = '';
-  embedModal.classList.add('hidden');
+learningCloseBtn.addEventListener('click', () => {
+  if (ytPlayer && typeof ytPlayer.pauseVideo === 'function') {
+    ytPlayer.pauseVideo();
+  }
+  learningModal.classList.add('hidden');
+  stopNotesInterval();
   if (window.Capacitor && window.Capacitor.Plugins.AdMob && admobInitialized && !isSwipeMode) {
     window.Capacitor.Plugins.AdMob.resumeBanner().catch(console.error);
+  }
+});
+
+function onPlayerStateChange(event) {
+  // Can add logic if needed
+}
+
+function startNotesInterval() {
+  stopNotesInterval();
+  notesInterval = setInterval(() => {
+    if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
+      const time = ytPlayer.getCurrentTime();
+      if (currentVideoTimeSpan) {
+        currentVideoTimeSpan.textContent = formatTime(time);
+      }
+    }
+  }, 1000);
+}
+
+function stopNotesInterval() {
+  if (notesInterval) clearInterval(notesInterval);
+}
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+// --- NOTES FIREBASE LOGIC ---
+function loadNotesForVideo(vidId, ownerId) {
+  notesList.innerHTML = '<p style="color: #94a3b8; padding: 10px;">Loading notes...</p>';
+  currentNotes = [];
+  lastAiSummaryMarkdown = null;
+  
+  if (!ownerId && currentUser) ownerId = currentUser.id;
+  
+  if (!ownerId) {
+    notesList.innerHTML = '<p style="color: #94a3b8; padding: 10px;">Cannot load notes for this video.</p>';
+    return;
+  }
+
+  const addNoteContainer = document.querySelector('.add-note-container');
+  if (currentUser && currentUser.id === ownerId) {
+    if (addNoteContainer) addNoteContainer.style.display = 'flex';
+  } else {
+    if (addNoteContainer) addNoteContainer.style.display = 'none';
+  }
+
+  const localNotes = localStorage.getItem(`notes_${ownerId}_${vidId}`);
+  if (localNotes) {
+    try {
+      currentNotes = JSON.parse(localNotes);
+      renderNotes();
+    } catch(e){}
+  }
+
+  db.collection('users').doc(ownerId).collection('notes').doc(vidId).get()
+    .then(doc => {
+      if (doc.exists) {
+        currentNotes = doc.data().notes || [];
+        localStorage.setItem(`notes_${ownerId}_${vidId}`, JSON.stringify(currentNotes));
+      }
+      renderNotes();
+    })
+    .catch(err => {
+      console.error("Error loading notes:", err);
+      notesList.innerHTML = '<p style="color: #ef4444; padding: 10px;">Failed to load notes.</p>';
+    });
+}
+
+function renderNotes() {
+  notesList.innerHTML = '';
+  if (currentNotes.length === 0) {
+    notesList.innerHTML = '<p style="color: #94a3b8; padding: 10px;">No notes yet. Start typing below!</p>';
+    return;
+  }
+  
+  // Sort notes by time
+  currentNotes.sort((a, b) => a.time - b.time);
+
+  const isOwner = currentUser && currentUser.id === currentVideoOwnerId;
+
+  currentNotes.forEach((note, index) => {
+    const div = document.createElement('div');
+    div.className = 'note-item';
+    
+    let deleteBtnHtml = '';
+    if (isOwner) {
+       deleteBtnHtml = `<button class="delete-note-btn" data-index="${index}" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 0 5px;" title="Delete Note"><i class="fa-solid fa-trash"></i></button>`;
+    }
+
+    div.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+        <div class="note-time" data-time="${note.time}"><i class="fa-solid fa-play"></i> ${formatTime(note.time)}</div>
+        ${deleteBtnHtml}
+      </div>
+      <div class="note-text">${note.text}</div>
+    `;
+    notesList.appendChild(div);
+  });
+
+  document.querySelectorAll('.note-time').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const time = parseFloat(e.currentTarget.getAttribute('data-time'));
+      if (ytPlayer && typeof ytPlayer.seekTo === 'function') {
+        ytPlayer.seekTo(time, true);
+        ytPlayer.playVideo();
+      }
+    });
+  });
+
+  document.querySelectorAll('.delete-note-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const idx = e.currentTarget.getAttribute('data-index');
+      currentNotes.splice(idx, 1);
+      renderNotes();
+      
+      if (currentVideoId && currentVideoOwnerId) {
+        db.collection('users').doc(currentVideoOwnerId).collection('notes').doc(currentVideoId)
+          .set({ notes: currentNotes }, { merge: true })
+          .catch(console.error);
+        localStorage.setItem(`notes_${currentVideoOwnerId}_${currentVideoId}`, JSON.stringify(currentNotes));
+      }
+    });
+  });
+}
+
+saveNoteBtn.addEventListener('click', () => {
+  if (!currentUser) {
+    alert("Please log in to save notes.");
+    return;
+  }
+  const text = noteInput.value.trim();
+  if (!text) return;
+
+  let time = 0;
+  if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
+    time = ytPlayer.getCurrentTime();
+  }
+
+  currentNotes.push({ time, text });
+  noteInput.value = '';
+  renderNotes();
+
+  // Save to Firebase
+  if (currentVideoId && currentVideoOwnerId) {
+    db.collection('users').doc(currentVideoOwnerId).collection('notes').doc(currentVideoId)
+      .set({ notes: currentNotes }, { merge: true })
+      .catch(console.error);
+      
+    localStorage.setItem(`notes_${currentVideoOwnerId}_${currentVideoId}`, JSON.stringify(currentNotes));
+  }
+});
+
+// --- EXPORT NOTES LOGIC ---
+exportNotesBtn.addEventListener('click', () => {
+  showInterstitialAd();
+  
+  if (currentNotes.length === 0) {
+    alert("No notes to export.");
+    return;
+  }
+  
+  let markdown = '# Notes for Video\n\n';
+  
+  if (lastAiSummaryMarkdown && !aiSummaryContainer.classList.contains('hidden')) {
+    markdown += `## AI Summary\n\n${lastAiSummaryMarkdown}\n\n---\n\n`;
+  }
+
+  currentNotes.sort((a, b) => a.time - b.time).forEach(n => {
+    markdown += `**[${formatTime(n.time)}]**\n${n.text}\n\n`;
+  });
+
+  const blob = new Blob([markdown], { type: 'text/markdown' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `toptube_notes_${currentVideoId}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+// --- REAL AI SUMMARY LOGIC (GEMINI) ---
+
+aiSummaryBtn.addEventListener('click', async () => {
+  showInterstitialAd();
+  
+  if (!currentVideoId) return;
+  aiSummaryContainer.classList.remove('hidden');
+  summaryContent.innerHTML = '<i><i class="fa-solid fa-spinner fa-spin"></i> Generando resumen con Gemini AI...</i>';
+  
+  const geminiApiKey = localStorage.getItem('geminiApiKey');
+  
+  if (!geminiApiKey) {
+    summaryContent.innerHTML = '<p style="color: #ef4444;">Error: Falta la API Key de Gemini. Añádela desde el menú "More".</p>';
+    return;
+  }
+
+  let videoTitle = "el video seleccionado";
+  if (ytPlayer && typeof ytPlayer.getVideoData === 'function') {
+    const data = ytPlayer.getVideoData();
+    if (data && data.title) {
+      videoTitle = `el video titulado "${data.title}"`;
+    }
+  }
+
+  let prompt = `Actúa como un profesor experto y crea un resumen muy estructurado y educativo para ${videoTitle}. `;
+  
+  if (currentNotes && currentNotes.length > 0) {
+    prompt += `\n\nEl estudiante ha tomado estas notas mientras veía el video:\n`;
+    currentNotes.sort((a, b) => a.time - b.time).forEach(n => {
+      prompt += `- ${n.text}\n`;
+    });
+    prompt += `\nPor favor, basándote en el título y en estas notas, elabora un resumen final consolidado, destacando los puntos más importantes y proporcionando algo de contexto extra que pueda ser útil. Usa formato Markdown con listas y negritas.`;
+  } else {
+    prompt += `\nPor favor, escribe un breve resumen general de lo que se suele aprender en un video con este título, ya que el estudiante aún no ha tomado notas. Usa formato Markdown.`;
+  }
+
+  try {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${geminiApiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    });
+
+    const data = await response.json();
+    
+    if (data.error) {
+      summaryContent.innerHTML = `<p style="color: #ef4444;">Error de la API: ${data.error.message}</p>`;
+      return;
+    }
+
+    const aiText = data.candidates[0].content.parts[0].text;
+    lastAiSummaryMarkdown = aiText;
+    
+    // Parse Markdown if marked.js is available
+    if (typeof marked !== 'undefined') {
+      summaryContent.innerHTML = marked.parse(aiText);
+    } else {
+      summaryContent.innerText = aiText; // Fallback
+    }
+
+  } catch (error) {
+    console.error("AI Error:", error);
+    summaryContent.innerHTML = `<p style="color: #ef4444;">Hubo un error al contactar a la IA.</p>`;
   }
 });
 
@@ -760,16 +1060,41 @@ function renderAddedLinks() {
   addedLinksList.innerHTML = '';
   myProfileLinks.forEach((link, index) => {
     const platform = PLATFORMS.find(p => p.id === link.platformId) || { name: 'Unknown', icon: 'fa-solid fa-link', color: '#ccc' };
+    
+    let thumbHtml = '';
+    if (link.platformId === 'youtube') {
+      const ytId = getYouTubeId(link.url);
+      if (ytId) {
+        thumbHtml = `<img src="https://img.youtube.com/vi/${ytId}/default.jpg" style="width: 40px; height: 30px; object-fit: cover; border-radius: 4px;" />`;
+      }
+    }
+
+    const privacyIcon = link.isPrivate 
+      ? '<i class="fa-solid fa-lock" style="color: #ef4444;"></i>' 
+      : '<i class="fa-solid fa-lock-open" style="color: #22c55e;"></i>';
+
     const li = document.createElement('li');
     li.className = 'added-link-item';
     li.innerHTML = `
-      <span class="platform-name"><i class="${platform.icon}" style="color:${platform.color}"></i> ${platform.name}</span>
+      <span class="platform-name">${thumbHtml}<i class="${platform.icon}" style="color:${platform.color}"></i> ${platform.name}</span>
       <span style="font-size: 0.8rem; color: #aaa; overflow: hidden; white-space: nowrap; max-width: 200px; text-overflow: ellipsis;">${link.url}</span>
-      <button type="button" data-index="${index}"><i class="fa-solid fa-trash"></i></button>
+      <div style="display:flex; gap: 5px;">
+        <button type="button" class="privacy-toggle-btn" data-index="${index}" title="Toggle Privacy">${privacyIcon}</button>
+        <button type="button" class="delete-link-btn" data-index="${index}"><i class="fa-solid fa-trash"></i></button>
+      </div>
     `;
     addedLinksList.appendChild(li);
   });
-  addedLinksList.querySelectorAll('button').forEach(btn => {
+
+  addedLinksList.querySelectorAll('.privacy-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const idx = e.currentTarget.getAttribute('data-index');
+      myProfileLinks[idx].isPrivate = !myProfileLinks[idx].isPrivate;
+      renderAddedLinks();
+    });
+  });
+
+  addedLinksList.querySelectorAll('.delete-link-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const idx = e.currentTarget.getAttribute('data-index');
       myProfileLinks.splice(idx, 1);
@@ -821,6 +1146,23 @@ if (privacyPolicyBtn) {
   });
 }
 
+// --- SET API KEY LOGIC ---
+if (setApiKeyBtn) {
+  setApiKeyBtn.addEventListener('click', () => {
+    const currentKey = localStorage.getItem('geminiApiKey') || '';
+    const newKey = prompt('Por favor introduce tu Gemini API Key personal:', currentKey);
+    if (newKey !== null && newKey.trim() !== '') {
+      localStorage.setItem('geminiApiKey', newKey.trim());
+      alert('API Key guardada correctamente.');
+      // Ocultar menú
+      if (moreMenuOverlay) moreMenuOverlay.classList.remove('visible');
+    } else if (newKey !== null && newKey.trim() === '') {
+      localStorage.removeItem('geminiApiKey');
+      alert('API Key eliminada.');
+    }
+  });
+}
+
 if (privacyClose) {
   privacyClose.addEventListener('click', () => {
     privacyModal.classList.add('hidden');
@@ -836,8 +1178,8 @@ const swipeFeed = document.getElementById('swipe-feed');
 const tiktokModeBtnHeader = document.getElementById('tiktok-mode-btn-header');
 const leaderboardBtnHeader = document.getElementById('leaderboard-btn-header');
 
-let isSwipeMode = true;
-let isLeaderboardMode = false;
+let isSwipeMode = false;
+let isLeaderboardMode = true;
 
 // 1. Referral & Widget Routing (Run on load)
 window.addEventListener('DOMContentLoaded', () => {
@@ -975,7 +1317,7 @@ function renderSwipeFeed() {
   profiles.forEach(p => {
     if(p.links) {
       p.links.forEach(l => {
-        if(l.platformId === 'youtube') {
+        if(l.platformId === 'youtube' && (!l.isPrivate || (currentUser && currentUser.id === p.id))) {
            allVideos.push({ profile: p, url: l.url, link: l });
         }
       });
