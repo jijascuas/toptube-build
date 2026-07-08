@@ -516,8 +516,16 @@ favoritesBtnHeader.addEventListener('click', () => {
     setActiveNav('favorites-btn-header');
   } else {
     favoritesBtnHeader.style.color = '';
-    viewTitle.textContent = 'Creators';
-    viewIcon.innerHTML = '<i class="fa-solid fa-users"></i>';
+    isLeaderboardMode = true;
+    viewTitle.textContent = 'Leaderboard';
+    viewIcon.innerHTML = '<i class="fa-solid fa-trophy"></i>';
+    setActiveNav('leaderboard-btn-header');
+    const sorted = [...profiles].sort((a,b) => (b.totalVideoLikes || 0) - (a.totalVideoLikes || 0));
+    renderProfiles(sorted);
+    if (window.Capacitor && window.Capacitor.Plugins.AdMob && admobInitialized) {
+      window.Capacitor.Plugins.AdMob.resumeBanner().catch(console.error);
+    }
+    return;
   }
   renderProfiles();
   if (window.Capacitor && window.Capacitor.Plugins.AdMob && admobInitialized) {
@@ -1240,23 +1248,18 @@ window.voteCreator = function(creatorId, e) {
 };
 
 if(leaderboardBtnHeader) leaderboardBtnHeader.addEventListener('click', () => {
-  isLeaderboardMode = !isLeaderboardMode;
+  isLeaderboardMode = true;
   isSwipeMode = false;
   isViewingFavorites = false;
   if(swipeFeed) swipeFeed.classList.add('hidden');
   profilesGrid.classList.remove('hidden');
   
-  if (isLeaderboardMode) {
-    viewTitle.textContent = "Leaderboard";
-    viewIcon.innerHTML = '<i class="fa-solid fa-trophy"></i>';
-    setActiveNav('leaderboard-btn-header');
-    const sorted = [...profiles].sort((a,b) => (b.totalVideoLikes || 0) - (a.totalVideoLikes || 0));
-    renderProfiles(sorted);
-  } else {
-    viewTitle.textContent = "Creators";
-    viewIcon.innerHTML = '<i class="fa-solid fa-users"></i>';
-    renderProfiles(profiles);
-  }
+  viewTitle.textContent = "Leaderboard";
+  viewIcon.innerHTML = '<i class="fa-solid fa-trophy"></i>';
+  setActiveNav('leaderboard-btn-header');
+  const sorted = [...profiles].sort((a,b) => (b.totalVideoLikes || 0) - (a.totalVideoLikes || 0));
+  renderProfiles(sorted);
+
   if (window.Capacitor && window.Capacitor.Plugins.AdMob && admobInitialized) {
     window.Capacitor.Plugins.AdMob.resumeBanner().catch(console.error);
   }
@@ -1281,9 +1284,12 @@ if(tiktokModeBtnHeader) tiktokModeBtnHeader.addEventListener('click', () => {
   } else {
     swipeFeed.classList.add('hidden');
     profilesGrid.classList.remove('hidden');
-    viewTitle.textContent = "Creators";
-    viewIcon.innerHTML = '<i class="fa-solid fa-users"></i>';
-    renderProfiles(profiles);
+    isLeaderboardMode = true;
+    viewTitle.textContent = "Leaderboard";
+    viewIcon.innerHTML = '<i class="fa-solid fa-trophy"></i>';
+    setActiveNav('leaderboard-btn-header');
+    const sorted = [...profiles].sort((a,b) => (b.totalVideoLikes || 0) - (a.totalVideoLikes || 0));
+    renderProfiles(sorted);
     if (window.Capacitor && window.Capacitor.Plugins.AdMob && admobInitialized) {
       window.Capacitor.Plugins.AdMob.resumeBanner().catch(console.error);
     }
@@ -1524,9 +1530,9 @@ if (creatorSearchInput && creatorSearchResults) {
         // Hide More Menu
         moreMenuOverlay.classList.add('hidden');
         
-        // Switch to Creators View
+        // Switch to Leaderboard View
         isSwipeMode = false;
-        isLeaderboardMode = false;
+        isLeaderboardMode = true;
         isViewingFavorites = false;
         
         if (swipeFeed) swipeFeed.classList.add('hidden');
@@ -1535,10 +1541,10 @@ if (creatorSearchInput && creatorSearchResults) {
         
         document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
         
-        viewTitle.textContent = 'Creators';
-        viewIcon.innerHTML = '<i class="fa-solid fa-users"></i>';
+        viewTitle.textContent = 'Leaderboard';
+        viewIcon.innerHTML = '<i class="fa-solid fa-trophy"></i>';
+        setActiveNav('leaderboard-btn-header');
         
-        // Sort alphabetically or default
         const sorted = [...profiles].sort((a,b) => (b.totalVideoLikes || 0) - (a.totalVideoLikes || 0));
         renderProfiles(sorted);
         
