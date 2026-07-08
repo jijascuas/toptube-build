@@ -343,7 +343,7 @@ if (loginEmailBtn) {
   loginEmailBtn.addEventListener('click', () => {
     const email = authEmail.value;
     const pass = authPassword.value;
-    if (!email || !pass) return alert('Por favor, ingresa correo y contraseña.');
+    if (!email || !pass) return alert('Please enter email and password.');
     auth.signInWithEmailAndPassword(email, pass).then(() => {
       authModal.style.display = 'none';
       authModal.classList.add('hidden');
@@ -355,7 +355,7 @@ if (registerEmailBtn) {
   registerEmailBtn.addEventListener('click', () => {
     const email = authEmail.value;
     const pass = authPassword.value;
-    if (!email || !pass) return alert('Por favor, ingresa correo y contraseña.');
+    if (!email || !pass) return alert('Please enter email and password.');
     auth.createUserWithEmailAndPassword(email, pass).then(() => {
       authModal.style.display = 'none';
       authModal.classList.add('hidden');
@@ -375,7 +375,7 @@ function doGoogleSignIn() {
   if (isCapacitorNative()) {
     auth.signInWithRedirect(googleProvider).catch(err => {
       console.error("Redirect login failed", err);
-      alert("Error de redirección: " + err.message);
+      alert("Redirect error: " + err.message);
     });
   } else {
     auth.signInWithPopup(googleProvider).then(result => {
@@ -383,7 +383,7 @@ function doGoogleSignIn() {
       if (moreMenuOverlay) moreMenuOverlay.classList.add('hidden');
     }).catch(err => {
       console.error("Popup sign in error:", err);
-      alert("Error de inicio de sesión: " + err.message);
+      alert("Login error: " + err.message);
     });
 }
 }
@@ -945,33 +945,33 @@ aiSummaryBtn.addEventListener('click', async () => {
   
   if (!currentVideoId) return;
   aiSummaryContainer.classList.remove('hidden');
-  summaryContent.innerHTML = '<i><i class="fa-solid fa-spinner fa-spin"></i> Generando resumen con Gemini AI...</i>';
+  summaryContent.innerHTML = '<i><i class="fa-solid fa-spinner fa-spin"></i> Generating summary with Gemini AI...</i>';
   
   const geminiApiKey = localStorage.getItem('geminiApiKey');
   
   if (!geminiApiKey) {
-    summaryContent.innerHTML = '<p style="color: #ef4444;">Error: Falta la API Key de Gemini. Añádela desde el menú "More".</p>';
+    summaryContent.innerHTML = '<p style="color: #ef4444;">Error: Missing Gemini API Key. Add it from the "More" menu.</p>';
     return;
   }
 
-  let videoTitle = "el video seleccionado";
+  let videoTitle = "the selected video";
   if (ytPlayer && typeof ytPlayer.getVideoData === 'function') {
     const data = ytPlayer.getVideoData();
     if (data && data.title) {
-      videoTitle = `el video titulado "${data.title}"`;
+      videoTitle = `the video titled "${data.title}"`;
     }
   }
 
-  let prompt = `Actúa como un profesor experto y crea un resumen muy estructurado y educativo para ${videoTitle}. `;
+  let prompt = `Act as an expert teacher and create a highly structured and educational summary for ${videoTitle}. `;
   
   if (currentNotes && currentNotes.length > 0) {
-    prompt += `\n\nEl estudiante ha tomado estas notas mientras veía el video:\n`;
+    prompt += `\n\nThe student has taken these notes while watching the video:\n`;
     currentNotes.sort((a, b) => a.time - b.time).forEach(n => {
       prompt += `- ${n.text}\n`;
     });
-    prompt += `\nPor favor, basándote en el título y en estas notas, elabora un resumen final consolidado, destacando los puntos más importantes y proporcionando algo de contexto extra que pueda ser útil. Usa formato Markdown con listas y negritas.`;
+    prompt += `\nPlease, based on the title and these notes, elaborate a final consolidated summary, highlighting the most important points and providing some extra context that could be useful. Use Markdown format with lists and bold text.`;
   } else {
-    prompt += `\nPor favor, escribe un breve resumen general de lo que se suele aprender en un video con este título, ya que el estudiante aún no ha tomado notas. Usa formato Markdown.`;
+    prompt += `\nPlease write a brief general summary of what is usually learned in a video with this title, since the student hasn't taken notes yet. Use Markdown format.`;
   }
 
   try {
@@ -986,7 +986,7 @@ aiSummaryBtn.addEventListener('click', async () => {
     const data = await response.json();
     
     if (data.error) {
-      summaryContent.innerHTML = `<p style="color: #ef4444;">Error de la API: ${data.error.message}</p>`;
+      summaryContent.innerHTML = `<p style="color: #ef4444;">API Error: ${data.error.message}</p>`;
       return;
     }
 
@@ -1002,7 +1002,7 @@ aiSummaryBtn.addEventListener('click', async () => {
 
   } catch (error) {
     console.error("AI Error:", error);
-    summaryContent.innerHTML = `<p style="color: #ef4444;">Hubo un error al contactar a la IA.</p>`;
+    summaryContent.innerHTML = `<p style="color: #ef4444;">There was an error contacting the AI.</p>`;
   }
 });
 
@@ -1158,15 +1158,15 @@ if (privacyPolicyBtn) {
 if (setApiKeyBtn) {
   setApiKeyBtn.addEventListener('click', () => {
     const currentKey = localStorage.getItem('geminiApiKey') || '';
-    const newKey = prompt('Por favor introduce tu Gemini API Key personal:', currentKey);
+    const newKey = prompt('Please enter your personal Gemini API Key (Get it from Google AI Studio: aistudio.google.com):', currentKey);
     if (newKey !== null && newKey.trim() !== '') {
       localStorage.setItem('geminiApiKey', newKey.trim());
-      alert('API Key guardada correctamente.');
-      // Ocultar menú
+      alert('API Key saved successfully.');
+      // Hide menu
       if (moreMenuOverlay) moreMenuOverlay.classList.remove('visible');
     } else if (newKey !== null && newKey.trim() === '') {
       localStorage.removeItem('geminiApiKey');
-      alert('API Key eliminada.');
+      alert('API Key removed.');
     }
   });
 }
