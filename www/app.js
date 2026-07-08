@@ -136,7 +136,7 @@ function onReelViewed() {
 
 // --- DATA STRUCTURES ---
 const rawPlatforms = [
-  { id: 'youtube', name: 'YouTube', icon: 'fa-brands fa-youtube', color: '#ff0000', domain: 'youtube.com', embeddable: true }
+  { id: 'youtube', name: 'YouTube', icon: 'fa-brands fa-youtube', color: '#ff0000', domain: 'youtube.com', altDomain: 'youtu.be', embeddable: true }
 ];
 
 const PLATFORMS = rawPlatforms;
@@ -581,7 +581,7 @@ function renderProfiles(profilesList = profiles) {
         return `
           <div class="video-card">
             <a href="#" data-url="${link.url}" data-pid="youtube" data-profile-id="${p.id}" data-embeddable="true" class="yt-thumbnail-pill" title="Watch video">
-              <img src="${thumbUrl}" alt="YouTube Thumbnail" />
+              <img src="${thumbUrl}" alt="YouTube Thumbnail" referrerpolicy="no-referrer" />
             </a>
             <div class="video-actions">
               <button class="video-like-btn ${isLiked ? 'liked' : ''}" data-profile-id="${p.id}" data-url="${link.url}" title="Like this video">
@@ -598,7 +598,7 @@ function renderProfiles(profilesList = profiles) {
             <i class="fa-solid fa-star"></i>
           </button>
           <div class="avatar-container ${p.referrals > 3 ? 'badge-golden' : ''}">
-            <img src="${p.avatar || 'https://ui-avatars.com/api/?name='+encodeURIComponent(p.nickname || p.name || 'User')+'&background=random'}" alt="" class="row-avatar" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(p.nickname || p.name || 'User')}&background=random'" />
+            <img src="${p.avatar || 'https://ui-avatars.com/api/?name='+encodeURIComponent(p.nickname || p.name || 'User')+'&background=random'}" alt="" class="row-avatar" referrerpolicy="no-referrer" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(p.nickname || p.name || 'User')}&background=random'" />
             ${p.referrals > 3 ? '<div class="badge-icon"><i class="fa-solid fa-check"></i></div>' : ''}
           </div>
           <div style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 5px;">
@@ -929,13 +929,21 @@ exportNotesBtn.addEventListener('click', () => {
     markdown += `**[${formatTime(n.time)}]**\n${n.text}\n\n`;
   });
 
-  const blob = new Blob([markdown], { type: 'text/markdown' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `toptube_notes_${currentVideoId}.md`;
-  a.click();
-  URL.revokeObjectURL(url);
+  if (isCapacitorNative() && window.Capacitor.Plugins.Share) {
+    window.Capacitor.Plugins.Share.share({
+      title: `TopTube Notes - ${currentVideoId}`,
+      text: markdown,
+      dialogTitle: 'Export Notes'
+    }).catch(console.error);
+  } else {
+    const blob = new Blob([markdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `toptube_notes_${currentVideoId}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 });
 
 // --- REAL AI SUMMARY LOGIC (GEMINI) ---
@@ -962,7 +970,8 @@ aiSummaryBtn.addEventListener('click', async () => {
     }
   }
 
-  let prompt = `Act as an expert teacher and create a highly structured and educational summary for ${videoTitle}. `;
+  const userLang = navigator.language || 'en';
+  let prompt = `Act as an expert teacher and create a highly structured and educational summary for ${videoTitle}. Please reply in the language: ${userLang}. `;
   
   if (currentNotes && currentNotes.length > 0) {
     prompt += `\n\nThe student has taken these notes while watching the video:\n`;
@@ -1510,6 +1519,7 @@ if (creatorSearchInput && creatorSearchResults) {
       
       const img = document.createElement('img');
       img.src = match.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(match.nickname || match.name || 'User')}&background=random`;
+      img.referrerPolicy = "no-referrer";
       img.onerror = function() { this.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(match.nickname || match.name || 'User')}&background=random`; };
       img.style.width = '30px';
       img.style.height = '30px';
