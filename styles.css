@@ -1298,3 +1298,59 @@ body.widget-mode .profile-card {
     height: calc(100dvh - 64px);
   }
 }
+
+.drawing-item {
+  cursor: pointer;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  transition: transform 0.2s;
+  position: relative;
+}
+.drawing-item:hover {
+  transform: scale(1.05);
+}
+.drawing-item img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+  display: block;
+}
+.drawing-item .drawing-author {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  padding: 4px;
+  font-size: 0.8rem;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.draggable-text {
+  position: absolute;
+  cursor: grab;
+  user-select: none;
+  pointer-events: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  padding: 4px;
+  border: 1px dashed transparent;
+  color: black;
+  font-family: Arial, sans-serif;
+  font-weight: bold;
+}
+.draggable-text:active {
+  cursor: grabbing;
+}
+.draggable-text.editing {
+  border: 1px dashed #3b82f6;
+  background: rgba(255,255,255,0.8);
+  cursor: text;
+}
+

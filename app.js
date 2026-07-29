@@ -725,6 +725,13 @@ function openLinkInApp(url, platformId, isEmbeddable, ownerId = null) {
   aiSummaryContainer.classList.add('hidden');
   summaryContent.innerHTML = '';
   noteInput.value = '';
+  if (typeof drawingsListContainer !== 'undefined' && drawingsListContainer) {
+    drawingsListContainer.classList.add('hidden');
+  }
+  if (typeof drawingsList !== 'undefined' && drawingsList) {
+    drawingsList.classList.remove('hidden'); // ensure it's not stuck hidden
+    drawingsList.innerHTML = '';
+  }
 
   if (window.Capacitor && window.Capacitor.Plugins.AdMob && admobInitialized) {
     window.Capacitor.Plugins.AdMob.hideBanner().catch(console.error);
@@ -1134,6 +1141,20 @@ profileForm.addEventListener('submit', (e) => {
   const existing = profiles.find(p => p.id === currentUser.id);
   const favoritedBy = existing ? (existing.favoritedBy || []) : [];
   
+  const existingLinks = existing ? (existing.links || []) : [];
+  const deletedLinks = existingLinks.filter(oldLink => !myProfileLinks.some(newLink => newLink.url === oldLink.url));
+  const vidIdsToDelete = [];
+  
+  deletedLinks.forEach(l => {
+    let vidId = null;
+    if (l.url.includes('watch?v=')) {
+      vidId = l.url.split('watch?v=')[1].split('&')[0];
+    } else if (l.url.includes('youtu.be/')) {
+      vidId = l.url.split('youtu.be/')[1].split('?')[0];
+    }
+    if (vidId) vidIdsToDelete.push(vidId);
+  });
+  
   db.collection('profiles').doc(currentUser.id).set({
     nickname: nick,
     avatar: currentUser.avatar,
@@ -1142,6 +1163,21 @@ profileForm.addEventListener('submit', (e) => {
     favoritesCount: favoritedBy.length
   }, { merge: true }).then(() => {
     profileModal.classList.add('hidden');
+    
+    // Cleanup notes and drawings for deleted videos asynchronously
+    vidIdsToDelete.forEach(async (vidId) => {
+      try {
+        await db.collection('users').doc(currentUser.id).collection('notes').doc(vidId).delete();
+      } catch(e) { console.error("Error deleting notes", e); }
+      
+      try {
+        const qs = await db.collection('drawings').where('videoKey', '==', currentUser.id + '_' + vidId).get();
+        qs.forEach(doc => {
+          doc.ref.delete();
+        });
+      } catch(e) { console.error("Error deleting drawings", e); }
+    });
+    
   }).catch(err => {
     console.error("Error saving profile", err);
     linkErrorMsg.textContent = 'Error saving to the database.';
@@ -1581,3 +1617,673 @@ if (creatorSearchInput && creatorSearchResults) {
     }
   });
 }
+
+// --- DRAWING FEATURE ---
+const drawTabBtn = document.getElementById("draw-tab-btn");
+const drawingsSection = document.getElementById("drawings-section");
+const addDrawingBtn = document.getElementById("add-drawing-btn");
+const drawingsList = document.getElementById("drawings-list");
+const toggleDrawingsListBtn = document.getElementById("toggle-drawings-list-btn");
+const drawingsListContainer = document.getElementById("drawings-list-container");
+const drawingsSearchInput = document.getElementById("drawings-search-input");
+
+const drawingModal = document.getElementById("drawing-modal");
+const drawingCloseBtn = document.getElementById("drawing-close");
+const drawingCanvas = document.getElementById("drawing-canvas");
+const canvasContainer = document.getElementById("canvas-container");
+const drawingTextLayer = document.getElementById("drawing-text-layer");
+
+const saveDrawingBtn = document.getElementById("save-drawing-btn");
+const downloadDrawingBtn = document.getElementById("download-drawing-btn");
+const drawingColorInput = document.getElementById("drawing-color");
+const drawingThicknessInput = document.getElementById("drawing-thickness");
+const addTextBtn = document.getElementById("add-text-btn");
+
+let drawCtx = drawingCanvas.getContext('2d');
+let isDrawing = false;
+let currentDrawingDocId = null;
+let ownDrawingDocGlobal = null;
+let textElements = [];
+
+drawTabBtn.addEventListener("click", () => {
+  drawingsSection.classList.toggle("hidden");
+  if (!drawingsSection.classList.contains("hidden")) {
+    if (currentUser) {
+      addDrawingBtn.classList.remove("hidden");
+    } else {
+      addDrawingBtn.classList.add("hidden");
+    }
+  }
+});
+
+if (toggleDrawingsListBtn) {
+  toggleDrawingsListBtn.addEventListener("click", () => {
+    if (drawingsListContainer) drawingsListContainer.classList.toggle("hidden");
+    if (addDrawingBtn) addDrawingBtn.classList.remove("hidden");
+    if (!drawingsListContainer.classList.contains("hidden")) {
+      loadDrawings();
+    }
+  });
+}
+
+if (drawingsSearchInput) {
+  drawingsSearchInput.addEventListener("input", (e) => {
+    const q = e.target.value.toLowerCase();
+    Array.from(drawingsList.children).forEach(child => {
+      if (child.tagName === 'P') return;
+      const authorName = child.dataset.username.toLowerCase();
+      if (authorName.includes(q)) {
+        child.style.display = "flex";
+      } else {
+        child.style.display = "none";
+      }
+    });
+  });
+
+  drawingsSearchInput.addEventListener("change", (e) => {
+    const q = e.target.value.toLowerCase();
+    if (!q) return;
+    
+    const children = Array.from(drawingsList.children);
+    for (let child of children) {
+      if (child.tagName === 'P') continue;
+      const authorName = child.dataset.username.toLowerCase();
+      if (authorName === q) {
+        child.click();
+        e.target.value = "";
+        drawingsSearchInput.dispatchEvent(new Event('input'));
+        break;
+      }
+    }
+  });
+}
+
+// Update auth listener to handle Add Drawing button visibility
+auth.onAuthStateChanged(user => {
+  if (user) {
+    if (!drawingsSection.classList.contains("hidden")) {
+      addDrawingBtn.classList.remove("hidden");
+    }
+  } else {
+    addDrawingBtn.classList.add("hidden");
+  }
+});
+
+function resizeCanvas() {
+  const rect = canvasContainer.getBoundingClientRect();
+  drawingCanvas.width = rect.width;
+  drawingCanvas.height = rect.height;
+  
+  drawCtx.fillStyle = "white";
+  drawCtx.fillRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+  drawCtx.lineCap = "round";
+  drawCtx.lineJoin = "round";
+}
+
+addDrawingBtn.addEventListener("click", () => {
+  openDrawingModal();
+  if (ownDrawingDocGlobal) {
+    currentDrawingDocId = ownDrawingDocGlobal.id;
+  }
+});
+
+drawingCloseBtn.addEventListener("click", () => {
+  drawingModal.classList.add("hidden");
+});
+
+function openDrawingModal(drawingDoc = null) {
+  drawingModal.classList.remove("hidden");
+  resizeCanvas();
+  
+  // Clear previous state
+  undoStack = [];
+  redoStack = [];
+  textElements = [];
+  drawingTextLayer.innerHTML = "";
+  currentDrawingDocId = null;
+  drawingCanvas.style.pointerEvents = "auto";
+  drawingColorInput.disabled = false;
+  drawingThicknessInput.disabled = false;
+  addTextBtn.disabled = false;
+  saveDrawingBtn.style.display = "flex";
+
+  if (drawingDoc) {
+    currentDrawingDocId = drawingDoc.id;
+    const data = drawingDoc.data();
+    
+    // Load canvas image
+    if (data.imageDataUrl) {
+      const img = new Image();
+      img.onload = () => {
+        drawCtx.drawImage(img, 0, 0, drawingCanvas.width, drawingCanvas.height);
+      };
+      img.src = data.imageDataUrl;
+    }
+    
+    // Load text elements
+    if (data.texts && data.texts.length > 0) {
+      data.texts.forEach(t => {
+        createTextElement(t.text, t.x, t.y, t.color);
+      });
+    }
+
+    // Set Owner info in header
+    const ownerInfo = document.getElementById("drawing-owner-info");
+    const ownerAvatar = document.getElementById("drawing-owner-avatar");
+    const ownerName = document.getElementById("drawing-owner-name");
+    
+    if (ownerInfo && ownerAvatar && ownerName) {
+      ownerInfo.classList.remove("hidden");
+      ownerInfo.style.display = "flex";
+      ownerAvatar.src = data.userPhoto || "https://ui-avatars.com/api/?name=" + encodeURIComponent(data.userName);
+      ownerName.textContent = data.userName;
+    }
+
+    // Check if own drawing
+    const isOwn = currentUser && data.userId === currentUser.id;
+    if (!isOwn) {
+      // View only mode
+      drawingCanvas.style.pointerEvents = "none";
+      drawingColorInput.disabled = true;
+      drawingThicknessInput.disabled = true;
+      addTextBtn.disabled = true;
+      saveDrawingBtn.style.display = "none";
+      // Text layer also pointer-events none in CSS by default, but draggable items add auto.
+      // We will handle that by adding a view-only class or modifying elements.
+      document.querySelectorAll(".draggable-text").forEach(el => el.style.pointerEvents = "none");
+    }
+  } else {
+    // If it's a new drawing, hide owner info
+    const ownerInfo = document.getElementById("drawing-owner-info");
+    if (ownerInfo) {
+      ownerInfo.classList.add("hidden");
+      ownerInfo.style.display = "none";
+    }
+  }
+}
+
+// Drawing Logic
+let currentShapeTool = 'freehand';
+let lastX = 0;
+let lastY = 0;
+let startX = 0;
+let startY = 0;
+let shapeStartSnapshot = null;
+let undoStack = [];
+let redoStack = [];
+
+const shapesBtn = document.getElementById("shapes-btn");
+const shapesMenu = document.getElementById("shapes-menu");
+if (shapesBtn && shapesMenu) {
+  shapesBtn.addEventListener("click", () => {
+    shapesMenu.classList.toggle("hidden");
+  });
+  
+  document.querySelectorAll(".shape-option").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      currentShapeTool = e.currentTarget.dataset.shape;
+      shapesMenu.classList.add("hidden");
+      // Update button icon to show selected tool
+      const iconHtml = e.currentTarget.innerHTML;
+      shapesBtn.innerHTML = `${iconHtml} Shapes`;
+    });
+  });
+}
+
+function saveDrawingState() {
+  const currentState = {
+    imageData: drawingCanvas.toDataURL(),
+    texts: Array.from(drawingTextLayer.children).map(el => ({
+      text: el.textContent,
+      x: parseInt(el.style.left) || 0,
+      y: parseInt(el.style.top) || 0,
+      color: el.dataset.color || "#000"
+    }))
+  };
+  undoStack.push(currentState);
+  redoStack = [];
+}
+
+function restoreDrawingState(state) {
+  if (!state) return;
+  const img = new Image();
+  img.onload = () => {
+    drawCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+    drawCtx.fillStyle = "white";
+    drawCtx.fillRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+    drawCtx.drawImage(img, 0, 0, drawingCanvas.width, drawingCanvas.height);
+  };
+  img.src = state.imageData;
+
+  drawingTextLayer.innerHTML = "";
+  if (state.texts) {
+    state.texts.forEach(t => {
+      createTextElement(t.text, t.x, t.y, t.color);
+    });
+  }
+}
+
+document.getElementById("undo-btn").addEventListener("click", () => {
+  if (undoStack.length > 0) {
+    const currentState = {
+      imageData: drawingCanvas.toDataURL(),
+      texts: Array.from(drawingTextLayer.children).map(el => ({
+        text: el.textContent,
+        x: parseInt(el.style.left) || 0,
+        y: parseInt(el.style.top) || 0,
+        color: el.dataset.color || "#000"
+      }))
+    };
+    redoStack.push(currentState);
+    const prevState = undoStack.pop();
+    restoreDrawingState(prevState);
+  }
+});
+
+document.getElementById("redo-btn").addEventListener("click", () => {
+  if (redoStack.length > 0) {
+    const currentState = {
+      imageData: drawingCanvas.toDataURL(),
+      texts: Array.from(drawingTextLayer.children).map(el => ({
+        text: el.textContent,
+        x: parseInt(el.style.left) || 0,
+        y: parseInt(el.style.top) || 0,
+        color: el.dataset.color || "#000"
+      }))
+    };
+    undoStack.push(currentState);
+    const nextState = redoStack.pop();
+    restoreDrawingState(nextState);
+  }
+});
+
+
+function startDrawing(e) {
+  isDrawing = true;
+  saveDrawingState();
+  const pos = getPointerPos(e);
+  
+  if (currentShapeTool === 'freehand') {
+    lastX = pos.x;
+    lastY = pos.y;
+    drawCtx.beginPath();
+    drawCtx.moveTo(lastX, lastY);
+  } else {
+    startX = pos.x;
+    startY = pos.y;
+    // Save a snapshot of the canvas specifically for shape preview
+    shapeStartSnapshot = new Image();
+    shapeStartSnapshot.src = drawingCanvas.toDataURL();
+  }
+}
+
+function draw(e) {
+  if (!isDrawing) return;
+  e.preventDefault();
+  const pos = getPointerPos(e);
+  
+  drawCtx.strokeStyle = drawingColorInput.value;
+  drawCtx.lineWidth = drawingThicknessInput.value;
+
+  if (currentShapeTool === 'freehand') {
+    drawCtx.lineTo(pos.x, pos.y);
+    drawCtx.stroke();
+    lastX = pos.x;
+    lastY = pos.y;
+  } else if (shapeStartSnapshot && shapeStartSnapshot.complete) {
+    // Redraw the canvas background to clear the previous preview
+    drawCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+    drawCtx.drawImage(shapeStartSnapshot, 0, 0, drawingCanvas.width, drawingCanvas.height);
+    
+    // Draw the new shape
+    drawCtx.beginPath();
+    if (currentShapeTool === 'dashed') {
+      drawCtx.setLineDash([10, 10]);
+    } else {
+      drawCtx.setLineDash([]);
+    }
+    
+    if (currentShapeTool === 'line' || currentShapeTool === 'dashed') {
+      drawCtx.moveTo(startX, startY);
+      drawCtx.lineTo(pos.x, pos.y);
+    } else if (currentShapeTool === 'circle') {
+      const radius = Math.sqrt(Math.pow(pos.x - startX, 2) + Math.pow(pos.y - startY, 2));
+      drawCtx.arc(startX, startY, radius, 0, 2 * Math.PI);
+    } else if (currentShapeTool === 'square') {
+      const side = Math.max(Math.abs(pos.x - startX), Math.abs(pos.y - startY));
+      const x = pos.x < startX ? startX - side : startX;
+      const y = pos.y < startY ? startY - side : startY;
+      drawCtx.rect(x, y, side, side);
+    } else if (currentShapeTool === 'rectangle') {
+      drawCtx.rect(startX, startY, pos.x - startX, pos.y - startY);
+    } else if (currentShapeTool === 'rhombus') {
+      const cx = startX + (pos.x - startX) / 2;
+      const cy = startY + (pos.y - startY) / 2;
+      drawCtx.moveTo(cx, startY);
+      drawCtx.lineTo(pos.x, cy);
+      drawCtx.lineTo(cx, pos.y);
+      drawCtx.lineTo(startX, cy);
+      drawCtx.closePath();
+    }
+    drawCtx.stroke();
+    drawCtx.setLineDash([]); // Always reset
+  }
+}
+
+function stopDrawing() {
+  if (isDrawing) {
+    if (currentShapeTool === 'freehand') {
+      drawCtx.closePath();
+    }
+    isDrawing = false;
+    shapeStartSnapshot = null;
+  }
+}
+
+function getPointerPos(e) {
+  const rect = drawingCanvas.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+  return {
+    x: clientX - rect.left,
+    y: clientY - rect.top
+  };
+}
+
+drawingCanvas.addEventListener("pointerdown", startDrawing);
+drawingCanvas.addEventListener("pointermove", draw);
+window.addEventListener("pointerup", stopDrawing);
+
+// Custom Prompt Logic
+const customPromptModal = document.getElementById("custom-prompt-modal");
+const customPromptTitle = document.getElementById("custom-prompt-title");
+const customPromptInput = document.getElementById("custom-prompt-input");
+const customPromptOk = document.getElementById("custom-prompt-ok");
+const customPromptCancel = document.getElementById("custom-prompt-cancel");
+
+let customPromptResolve = null;
+
+function showCustomPrompt(title, defaultText = "") {
+  return new Promise((resolve) => {
+    customPromptTitle.textContent = title;
+    customPromptInput.value = defaultText;
+    customPromptModal.classList.remove("hidden");
+    customPromptInput.focus();
+    customPromptResolve = resolve;
+  });
+}
+
+function closeCustomPrompt(value) {
+  customPromptModal.classList.add("hidden");
+  if (customPromptResolve) {
+    customPromptResolve(value);
+    customPromptResolve = null;
+  }
+}
+
+customPromptOk.addEventListener("click", () => closeCustomPrompt(customPromptInput.value));
+customPromptCancel.addEventListener("click", () => closeCustomPrompt(null));
+customPromptInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") closeCustomPrompt(customPromptInput.value);
+  if (e.key === "Escape") closeCustomPrompt(null);
+});
+
+// Text Logic
+addTextBtn.addEventListener("click", async () => {
+  const text = await showCustomPrompt("Enter text:");
+  if (text) {
+    saveDrawingState();
+    createTextElement(text, 50, 50, drawingColorInput.value);
+  }
+});
+
+function createTextElement(text, x, y, color) {
+  const el = document.createElement("div");
+  el.className = "draggable-text";
+  el.textContent = text;
+  el.style.left = x + "px";
+  el.style.top = y + "px";
+  el.style.color = color;
+  el.dataset.color = color;
+  
+  let isDraggingText = false;
+  let textStartX, textStartY;
+  let pointerStartX, pointerStartY;
+  let longPressTimer;
+
+  el.addEventListener("pointerdown", (e) => {
+    // Only if editable
+    if (drawingCanvas.style.pointerEvents === "none") return;
+    
+    isDraggingText = true;
+    pointerStartX = e.clientX;
+    pointerStartY = e.clientY;
+    textStartX = parseInt(el.style.left) || 0;
+    textStartY = parseInt(el.style.top) || 0;
+    
+    el.setPointerCapture(e.pointerId);
+    e.stopPropagation(); // prevent canvas drawing
+
+    longPressTimer = setTimeout(async () => {
+      isDraggingText = false;
+      const oldText = el.textContent;
+      const newText = await showCustomPrompt("Edit text:", el.textContent);
+      if (newText !== null && newText !== oldText) {
+        saveDrawingState();
+        if (newText.trim() === "") {
+          el.remove();
+        } else {
+          el.textContent = newText;
+        }
+      }
+    }, 2000);
+  });
+
+  let moved = false;
+  el.addEventListener("pointermove", (e) => {
+    if (!isDraggingText) return;
+    const dx = e.clientX - pointerStartX;
+    const dy = e.clientY - pointerStartY;
+    
+    // If moved significantly, cancel long press
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+      clearTimeout(longPressTimer);
+      if (!moved) {
+        saveDrawingState();
+        moved = true;
+      }
+    }
+
+    el.style.left = (textStartX + dx) + "px";
+    el.style.top = (textStartY + dy) + "px";
+  });
+
+  el.addEventListener("pointerup", (e) => {
+    isDraggingText = false;
+    moved = false;
+    clearTimeout(longPressTimer);
+    el.releasePointerCapture(e.pointerId);
+  });
+
+  drawingTextLayer.appendChild(el);
+  textElements.push(el);
+}
+
+// Save logic
+saveDrawingBtn.addEventListener("click", async () => {
+  if (!currentUser || !currentVideoId) return;
+
+  saveDrawingBtn.disabled = true;
+  saveDrawingBtn.innerHTML = "<i class=\"fa-solid fa-spinner fa-spin\"></i>";
+
+  const imageDataUrl = drawingCanvas.toDataURL("image/jpeg", 0.4);
+  
+  const texts = Array.from(drawingTextLayer.children).map(el => {
+    return {
+      text: el.textContent,
+      x: parseInt(el.style.left) || 0,
+      y: parseInt(el.style.top) || 0,
+      color: el.dataset.color || "#000"
+    };
+  });
+
+  const drawingData = {
+    videoKey: currentVideoOwnerId + "_" + currentVideoId,
+    videoId: currentVideoId,
+    videoOwnerId: currentVideoOwnerId,
+    userId: currentUser.id,
+    userName: currentUser.name || "User",
+    userPhoto: currentUser.avatar || "",
+    imageDataUrl: imageDataUrl,
+    texts: texts,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  try {
+    await db.collection("drawings").doc(currentVideoOwnerId + "_" + currentVideoId + "_" + currentUser.id).set(drawingData);
+    drawingModal.classList.add("hidden");
+    loadDrawings();
+  } catch (error) {
+    console.error("Error saving drawing:", error);
+    alert("Failed to save drawing: " + error.message);
+  } finally {
+    saveDrawingBtn.disabled = false;
+    saveDrawingBtn.innerHTML = "<i class=\"fa-solid fa-floppy-disk\"></i>";
+  }
+});
+
+// Load drawings
+function loadDrawings() {
+  if (!currentVideoId) return;
+  drawingsList.innerHTML = "<p>Loading...</p>";
+  
+  db.collection("drawings").where("videoKey", "==", currentVideoOwnerId + "_" + currentVideoId).get()
+    .then(snapshot => {
+      drawingsList.innerHTML = "";
+      
+      if (snapshot.empty) {
+        drawingsList.innerHTML = `<p style="color: #94a3b8; font-size: 0.9rem; grid-column: 1 / -1;">No drawings yet.</p>`;
+        return;
+      }
+      
+      let ownDrawingDoc = null;
+      ownDrawingDocGlobal = null;
+      const otherDrawings = [];
+      
+      const datalist = document.getElementById("drawings-search-list");
+      if (datalist) datalist.innerHTML = "";
+
+      snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        if (datalist) {
+          const opt = document.createElement("option");
+          opt.value = data.userName;
+          datalist.appendChild(opt);
+        }
+        
+        if (currentUser && data.userId === currentUser.id) {
+          ownDrawingDoc = doc;
+          ownDrawingDocGlobal = doc;
+        } else {
+          otherDrawings.push(doc);
+        }
+      });
+
+      // Display own drawing first
+      try {
+        if (ownDrawingDoc) {
+          renderDrawingThumbnail(ownDrawingDoc, true);
+        }
+        
+        otherDrawings.forEach(doc => renderDrawingThumbnail(doc, false));
+      } catch (e) {
+        drawingsList.innerHTML = `<p style="color: red; grid-column: 1 / -1;">Render Error: ${e.message}</p>`;
+      }
+    })
+    .catch(error => {
+      console.error("Error loading drawings:", error);
+      // fallback if index is missing
+      if (error.code === "failed-precondition") {
+        db.collection("drawings").where("videoId", "==", currentVideoId)
+          .get()
+          .then(snapshot => {
+            drawingsList.innerHTML = "";
+            snapshot.docs.forEach(doc => renderDrawingThumbnail(doc, false));
+          });
+      } else {
+        drawingsList.innerHTML = `<p style="color: red; grid-column: 1 / -1;">Error loading drawings: ${error.message}</p>`;
+      }
+    });
+}
+
+function renderDrawingThumbnail(doc, isOwn) {
+  const data = doc.data();
+  const div = document.createElement("div");
+  div.className = "drawing-item";
+  div.dataset.username = data.userName;
+  div.style.display = "flex";
+  div.style.flexDirection = "column";
+  div.style.alignItems = "center";
+  div.style.gap = "5px";
+  
+  const img = document.createElement("img");
+  img.src = data.userPhoto || "https://ui-avatars.com/api/?name=" + encodeURIComponent(data.userName);
+  img.style.width = "60px";
+  img.style.height = "60px";
+  img.style.borderRadius = "50%";
+  img.style.objectFit = "cover";
+  
+  const authorDiv = document.createElement("div");
+  authorDiv.className = "drawing-author";
+  authorDiv.style.textAlign = "center";
+  authorDiv.style.background = "none";
+  authorDiv.style.padding = "0";
+  authorDiv.style.position = "static";
+  authorDiv.style.fontSize = "0.8rem";
+  authorDiv.style.color = "var(--text-color)";
+  authorDiv.textContent = data.userName;
+  
+  div.appendChild(img);
+  div.appendChild(authorDiv);
+  
+  div.addEventListener("click", () => {
+    openDrawingModal(doc);
+  });
+  
+  drawingsList.appendChild(div);
+}
+
+// Download logic
+downloadDrawingBtn.addEventListener("click", () => {
+  // Create an offscreen canvas to combine image and text
+  const offCanvas = document.createElement("canvas");
+  offCanvas.width = drawingCanvas.width;
+  offCanvas.height = drawingCanvas.height;
+  const offCtx = offCanvas.getContext("2d");
+  
+  // Draw main canvas
+  offCtx.drawImage(drawingCanvas, 0, 0);
+  
+  // Draw text elements
+  Array.from(drawingTextLayer.children).forEach(el => {
+    const text = el.textContent;
+    const x = parseInt(el.style.left) || 0;
+    const y = parseInt(el.style.top) || 0;
+    const color = el.style.color || "#000";
+    const fontSize = window.getComputedStyle(el).fontSize;
+    const fontFamily = window.getComputedStyle(el).fontFamily;
+    const fontWeight = window.getComputedStyle(el).fontWeight;
+    
+    offCtx.font = `${fontWeight} ${fontSize} ${fontFamily}`;
+    offCtx.fillStyle = color;
+    offCtx.textBaseline = "top";
+    // Slight offset adjustments to match DOM rendering roughly
+    offCtx.fillText(text, x + 4, y + 4); 
+  });
+  
+  const link = document.createElement("a");
+  link.download = `toptube_drawing_${currentVideoId}.png`;
+  link.href = offCanvas.toDataURL("image/png");
+  link.click();
+});
+
