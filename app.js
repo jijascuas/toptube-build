@@ -852,15 +852,26 @@ function renderNotes() {
   // Sort notes by time
   currentNotes.sort((a, b) => a.time - b.time);
 
-  const isOwner = currentUser && currentUser.id === currentVideoOwnerId;
+  const isVideoOwner = currentUser && currentUser.id === currentVideoOwnerId;
 
   currentNotes.forEach((note, index) => {
     const div = document.createElement('div');
     div.className = 'note-item';
     
     let deleteBtnHtml = '';
-    if (isOwner) {
+    const isNoteAuthor = currentUser && note.authorId === currentUser.id;
+    if (isVideoOwner || isNoteAuthor) {
        deleteBtnHtml = `<button class="delete-note-btn" data-index="${index}" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 0 5px;" title="Delete Note"><i class="fa-solid fa-trash"></i></button>`;
+    }
+
+    let authorHtml = '';
+    if (note.authorName) {
+      authorHtml = `
+        <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 5px;">
+          <img src="${note.authorAvatar || ''}" style="width: 20px; height: 20px; border-radius: 50%; object-fit: cover; background: #334155;">
+          <span style="font-size: 0.75rem; color: #94a3b8; font-weight: bold;">${note.authorName}</span>
+        </div>
+      `;
     }
 
     div.innerHTML = `
@@ -868,6 +879,7 @@ function renderNotes() {
         <div class="note-time" data-time="${note.time}"><i class="fa-solid fa-play"></i> ${formatTime(note.time)}</div>
         ${deleteBtnHtml}
       </div>
+      ${authorHtml}
       <div class="note-text">${note.text}</div>
     `;
     notesList.appendChild(div);
@@ -886,13 +898,18 @@ function renderNotes() {
   document.querySelectorAll('.delete-note-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const idx = e.currentTarget.getAttribute('data-index');
+      const noteToDelete = currentNotes[idx];
       currentNotes.splice(idx, 1);
       renderNotes();
       
       if (currentVideoId && currentVideoOwnerId) {
         db.collection('users').doc(currentVideoOwnerId).collection('notes').doc(currentVideoId)
-          .set({ notes: currentNotes }, { merge: true })
-          .catch(console.error);
+          .update({ notes: firebase.firestore.FieldValue.arrayRemove(noteToDelete) })
+          .catch(err => {
+             // Fallback if update fails
+             db.collection('users').doc(currentVideoOwnerId).collection('notes').doc(currentVideoId)
+               .set({ notes: currentNotes }, { merge: true });
+          });
         localStorage.setItem(`notes_${currentVideoOwnerId}_${currentVideoId}`, JSON.stringify(currentNotes));
       }
     });
@@ -912,15 +929,26 @@ saveNoteBtn.addEventListener('click', () => {
     time = ytPlayer.getCurrentTime();
   }
 
-  currentNotes.push({ time, text });
+  const newNote = {
+    time,
+    text,
+    authorId: currentUser.id,
+    authorName: currentUser.name || "Anonymous",
+    authorAvatar: currentUser.avatar || ""
+  };
+
+  currentNotes.push(newNote);
   noteInput.value = '';
   renderNotes();
 
   // Save to Firebase
   if (currentVideoId && currentVideoOwnerId) {
     db.collection('users').doc(currentVideoOwnerId).collection('notes').doc(currentVideoId)
-      .set({ notes: currentNotes }, { merge: true })
-      .catch(console.error);
+      .update({ notes: firebase.firestore.FieldValue.arrayUnion(newNote) })
+      .catch(err => {
+        db.collection('users').doc(currentVideoOwnerId).collection('notes').doc(currentVideoId)
+          .set({ notes: [newNote] });
+      });
       
     localStorage.setItem(`notes_${currentVideoOwnerId}_${currentVideoId}`, JSON.stringify(currentNotes));
   }
