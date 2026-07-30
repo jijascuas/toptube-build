@@ -73,7 +73,7 @@ async function showBannerAd() {
       adId: BANNER_AD_ID,
       adSize: 'ADAPTIVE_BANNER',
       position: 'BOTTOM_CENTER',
-      margin: 60,
+      margin: 0,
       isTesting: false
     });
     console.log('Banner ad shown');
@@ -1720,19 +1720,34 @@ function resizeCanvas() {
   drawCtx.lineJoin = "round";
 }
 
-addDrawingBtn.addEventListener("click", () => {
+addDrawingBtn.addEventListener("click", async () => {
+  if (admobInitialized && window.Capacitor) {
+    try {
+      await window.Capacitor.Plugins.AdMob.showInterstitial();
+      // Prepare the next one
+      window.Capacitor.Plugins.AdMob.prepareInterstitial({ adId: INTERSTITIAL_AD_ID, isTesting: false });
+    } catch (e) {
+      console.warn("Interstitial ad not ready or failed", e);
+    }
+  }
   openDrawingModal();
   if (ownDrawingDocGlobal) {
     currentDrawingDocId = ownDrawingDocGlobal.id;
   }
 });
 
-drawingCloseBtn.addEventListener("click", () => {
+drawingCloseBtn.addEventListener("click", async () => {
   drawingModal.classList.add("hidden");
+  if (window.Capacitor && window.Capacitor.Plugins.ScreenOrientation) {
+    try { await window.Capacitor.Plugins.ScreenOrientation.unlock(); } catch (e) {}
+  }
 });
 
-function openDrawingModal(drawingDoc = null) {
+async function openDrawingModal(drawingDoc = null) {
   drawingModal.classList.remove("hidden");
+  if (window.Capacitor && window.Capacitor.Plugins.ScreenOrientation) {
+    try { await window.Capacitor.Plugins.ScreenOrientation.lock({ type: 'portrait' }); } catch (e) {}
+  }
   resizeCanvas();
   
   // Clear previous state
@@ -2281,9 +2296,35 @@ downloadDrawingBtn.addEventListener("click", () => {
     offCtx.fillText(text, x + 4, y + 4); 
   });
   
-  const link = document.createElement("a");
-  link.download = `toptube_drawing_${currentVideoId}.png`;
-  link.href = offCanvas.toDataURL("image/png");
-  link.click();
+  const dataUrl = offCanvas.toDataURL("image/png");
+
+  if (window.Capacitor && window.Capacitor.Plugins.Filesystem) {
+    try {
+      const fileName = `toptube_drawing_${currentVideoId}_${Date.now()}.png`;
+      const result = await window.Capacitor.Plugins.Filesystem.writeFile({
+        path: fileName,
+        data: dataUrl.split(',')[1],
+        directory: 'DOCUMENTS',
+        recursive: true
+      });
+      alert("Drawing saved to your Documents folder!");
+      
+      if (window.Capacitor.Plugins.Share) {
+        await window.Capacitor.Plugins.Share.share({
+          title: 'TopTube Drawing',
+          url: result.uri,
+          dialogTitle: 'Share Drawing'
+        });
+      }
+    } catch (e) {
+      console.error("Save error:", e);
+      alert("Failed to save drawing on device.");
+    }
+  } else {
+    const link = document.createElement("a");
+    link.download = `toptube_drawing_${currentVideoId}.png`;
+    link.href = dataUrl;
+    link.click();
+  }
 });
 

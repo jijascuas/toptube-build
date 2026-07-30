@@ -1077,8 +1077,7 @@ body {
 
 /* ================= ADMOB BANNER ADJUSTMENT ================= */
 body.has-ad-banner #bottom-nav {
-  padding-bottom: 60px;
-  height: calc(var(--bottom-nav-height) + 60px);
+  bottom: 50px; /* Push above banner ad */
 }
 
 body.has-ad-banner #main-content {
