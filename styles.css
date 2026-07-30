@@ -1077,7 +1077,7 @@ body {
 
 /* ================= ADMOB BANNER ADJUSTMENT ================= */
 body.has-ad-banner #bottom-nav {
-  bottom: 50px; /* Push above banner ad */
+  /* bottom: 0; */
 }
 
 body.has-ad-banner #main-content {

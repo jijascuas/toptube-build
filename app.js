@@ -271,11 +271,17 @@ function setupMoreMenu() {
   if (navMoreBtn) {
     navMoreBtn.addEventListener('click', () => {
       moreMenuOverlay.classList.remove('hidden');
+      if (window.Capacitor && window.Capacitor.Plugins.AdMob && admobInitialized) {
+        window.Capacitor.Plugins.AdMob.hideBanner().catch(console.error);
+      }
     });
   }
   if (moreMenuClose) {
     moreMenuClose.addEventListener('click', () => {
       moreMenuOverlay.classList.add('hidden');
+      if (window.Capacitor && window.Capacitor.Plugins.AdMob && admobInitialized && (typeof isSwipeMode === 'undefined' || !isSwipeMode)) {
+        window.Capacitor.Plugins.AdMob.resumeBanner().catch(console.error);
+      }
     });
   }
   // Close on background tap
@@ -283,6 +289,9 @@ function setupMoreMenu() {
     moreMenuOverlay.addEventListener('click', (e) => {
       if (e.target === moreMenuOverlay) {
         moreMenuOverlay.classList.add('hidden');
+        if (window.Capacitor && window.Capacitor.Plugins.AdMob && admobInitialized && (typeof isSwipeMode === 'undefined' || !isSwipeMode)) {
+          window.Capacitor.Plugins.AdMob.resumeBanner().catch(console.error);
+        }
       }
     });
   }
