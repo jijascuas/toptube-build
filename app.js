@@ -829,9 +829,41 @@ function loadNotesForVideo(vidId, ownerId) {
   }
 
   db.collection('users').doc(ownerId).collection('notes').doc(vidId).get()
-    .then(doc => {
+    .then(async doc => {
       if (doc.exists) {
-        currentNotes = doc.data().notes || [];
+        let fetchedNotes = doc.data().notes || [];
+        let needsUpdate = false;
+        
+        if (fetchedNotes.some(n => !n.authorId)) {
+          let ownerName = "User";
+          let ownerAvatar = "";
+          try {
+            const profileDoc = await db.collection('profiles').doc(ownerId).get();
+            if (profileDoc.exists) {
+              ownerName = profileDoc.data().nickname || profileDoc.data().name || "User";
+              ownerAvatar = profileDoc.data().avatar || "";
+            } else {
+              const userDoc = await db.collection('users').doc(ownerId).get();
+              if (userDoc.exists) {
+                ownerName = userDoc.data().name || "User";
+                ownerAvatar = userDoc.data().avatar || "";
+              }
+            }
+          } catch(e) { console.warn(e); }
+          
+          fetchedNotes = fetchedNotes.map(n => {
+            if (!n.authorId) {
+              needsUpdate = true;
+              return { ...n, authorId: ownerId, authorName: ownerName, authorAvatar: ownerAvatar };
+            }
+            return n;
+          });
+        }
+        
+        currentNotes = fetchedNotes;
+        if (needsUpdate) {
+          db.collection('users').doc(ownerId).collection('notes').doc(vidId).set({ notes: currentNotes }, { merge: true });
+        }
         localStorage.setItem(`notes_${ownerId}_${vidId}`, JSON.stringify(currentNotes));
       }
       renderNotes();
@@ -864,23 +896,20 @@ function renderNotes() {
        deleteBtnHtml = `<button class="delete-note-btn" data-index="${index}" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 0 5px;" title="Delete Note"><i class="fa-solid fa-trash"></i></button>`;
     }
 
-    let authorHtml = '';
-    if (note.authorName) {
-      authorHtml = `
-        <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 5px;">
-          <img src="${note.authorAvatar || ''}" style="width: 20px; height: 20px; border-radius: 50%; object-fit: cover; background: #334155;">
-          <span style="font-size: 0.75rem; color: #94a3b8; font-weight: bold;">${note.authorName}</span>
-        </div>
-      `;
-    }
-
     div.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-        <div class="note-time" data-time="${note.time}"><i class="fa-solid fa-play"></i> ${formatTime(note.time)}</div>
-        ${deleteBtnHtml}
+      <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 15px;">
+        <img src="${note.authorAvatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #334155; flex-shrink: 0; margin-top: 2px;">
+        <div style="flex-grow: 1; display: flex; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 0.85rem; color: #f8fafc; font-weight: 600;">${note.authorName || 'User'}</span>
+              <span class="note-time" data-time="${note.time}" style="font-size: 0.75rem; color: #3b82f6; cursor: pointer; background: rgba(59, 130, 246, 0.1); padding: 2px 6px; border-radius: 4px;"><i class="fa-solid fa-play"></i> ${formatTime(note.time)}</span>
+            </div>
+            ${deleteBtnHtml}
+          </div>
+          <div class="note-text" style="font-size: 0.95rem; line-height: 1.4; color: #cbd5e1;">${note.text}</div>
+        </div>
       </div>
-      ${authorHtml}
-      <div class="note-text">${note.text}</div>
     `;
     notesList.appendChild(div);
   });
