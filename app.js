@@ -53,9 +53,7 @@ async function initAdMob() {
         initializeForTesting: false
       });
       admobInitialized = true;
-      document.body.classList.add('has-ad-banner');
       console.log('AdMob Initialized successfully');
-      showBannerAd();
       prepareInterstitialAd();
     } catch (e) {
       console.error('AdMob init error:', e);
