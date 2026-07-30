@@ -881,8 +881,14 @@ function renderNotes() {
     return;
   }
   
-  // Sort notes by time
-  currentNotes.sort((a, b) => a.time - b.time);
+  // Sort notes: pinned first, then by likes count, then by time
+  currentNotes.sort((a, b) => {
+    if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+    const aLikes = a.likedBy ? a.likedBy.length : 0;
+    const bLikes = b.likedBy ? b.likedBy.length : 0;
+    if (aLikes !== bLikes) return bLikes - aLikes;
+    return a.time - b.time;
+  });
 
   const isVideoOwner = currentUser && currentUser.id === currentVideoOwnerId;
 
@@ -896,10 +902,23 @@ function renderNotes() {
        deleteBtnHtml = `<button class="delete-note-btn" data-index="${index}" style="background: none; border: none; color: #ef4444; cursor: pointer; padding: 0 5px;" title="Delete Note"><i class="fa-solid fa-trash"></i></button>`;
     }
 
+    const likesCount = note.likedBy ? note.likedBy.length : 0;
+    const hasLiked = currentUser && note.likedBy && note.likedBy.includes(currentUser.id);
+
+    let pinBtnHtml = '';
+    if (isVideoOwner && isNoteAuthor) {
+      pinBtnHtml = `<button class="pin-note-btn" data-index="${index}" style="background: none; border: none; color: ${note.isPinned ? '#f59e0b' : '#94a3b8'}; cursor: pointer; padding: 0; font-size: 0.85rem; display: flex; align-items: center; gap: 4px;" title="${note.isPinned ? 'Unpin' : 'Pin to top'}">
+        <i class="fa-solid fa-thumbtack"></i> ${note.isPinned ? 'Pinned' : 'Pin'}
+      </button>`;
+    }
+    
+    let pinnedHeader = note.isPinned ? `<div style="font-size: 0.7rem; color: #f59e0b; margin-bottom: 2px;"><i class="fa-solid fa-thumbtack"></i> Pinned by owner</div>` : '';
+
     div.innerHTML = `
       <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 15px;">
-        <img src="${note.authorAvatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #334155; flex-shrink: 0; margin-top: 2px;">
+        <img src="${note.authorAvatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #334155; flex-shrink: 0; margin-top: ${note.isPinned ? '16px' : '2px'};">
         <div style="flex-grow: 1; display: flex; flex-direction: column;">
+          ${pinnedHeader}
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="font-size: 0.85rem; color: #f8fafc; font-weight: 600;">${note.authorName || 'User'}</span>
@@ -907,7 +926,13 @@ function renderNotes() {
             </div>
             ${deleteBtnHtml}
           </div>
-          <div class="note-text" style="font-size: 0.95rem; line-height: 1.4; color: #cbd5e1;">${note.text}</div>
+          <div class="note-text" style="font-size: 0.95rem; line-height: 1.4; color: #cbd5e1; margin-bottom: 8px;">${note.text}</div>
+          <div style="display: flex; align-items: center; gap: 15px;">
+            <button class="like-note-btn" data-index="${index}" style="background: none; border: none; color: ${hasLiked ? '#3b82f6' : '#94a3b8'}; cursor: pointer; padding: 0; font-size: 0.85rem; display: flex; align-items: center; gap: 4px;" title="Like">
+              <i class="${hasLiked ? 'fa-solid' : 'fa-regular'} fa-thumbs-up"></i> ${likesCount}
+            </button>
+            ${pinBtnHtml}
+          </div>
         </div>
       </div>
     `;
@@ -935,12 +960,56 @@ function renderNotes() {
         db.collection('users').doc(currentVideoOwnerId).collection('notes').doc(currentVideoId)
           .update({ notes: firebase.firestore.FieldValue.arrayRemove(noteToDelete) })
           .catch(err => {
-             // Fallback if update fails
              db.collection('users').doc(currentVideoOwnerId).collection('notes').doc(currentVideoId)
                .set({ notes: currentNotes }, { merge: true });
           });
         localStorage.setItem(`notes_${currentVideoOwnerId}_${currentVideoId}`, JSON.stringify(currentNotes));
       }
+    });
+  });
+
+  document.querySelectorAll('.like-note-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      if (!currentUser) return alert("Please log in to like notes.");
+      const idx = e.currentTarget.getAttribute('data-index');
+      const note = currentNotes[idx];
+      if (!note.likedBy) note.likedBy = [];
+      const userLikeIdx = note.likedBy.indexOf(currentUser.id);
+      if (userLikeIdx === -1) {
+        note.likedBy.push(currentUser.id);
+      } else {
+        note.likedBy.splice(userLikeIdx, 1);
+      }
+      
+      if (currentVideoId && currentVideoOwnerId) {
+        db.collection('users').doc(currentVideoOwnerId).collection('notes').doc(currentVideoId)
+          .set({ notes: currentNotes }, { merge: true })
+          .catch(console.error);
+        localStorage.setItem(`notes_${currentVideoOwnerId}_${currentVideoId}`, JSON.stringify(currentNotes));
+      }
+      renderNotes();
+    });
+  });
+
+  document.querySelectorAll('.pin-note-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const idx = e.currentTarget.getAttribute('data-index');
+      const note = currentNotes[idx];
+      const currentlyPinned = !!note.isPinned;
+      
+      // Unpin all notes
+      currentNotes.forEach(n => n.isPinned = false);
+      
+      // Toggle this note
+      note.isPinned = !currentlyPinned;
+      
+      if (currentVideoId && currentVideoOwnerId) {
+        db.collection('users').doc(currentVideoOwnerId).collection('notes').doc(currentVideoId)
+          .set({ notes: currentNotes }, { merge: true })
+          .catch(console.error);
+        localStorage.setItem(`notes_${currentVideoOwnerId}_${currentVideoId}`, JSON.stringify(currentNotes));
+      }
+      renderNotes();
     });
   });
 }
