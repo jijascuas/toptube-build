@@ -2283,7 +2283,7 @@ function renderDrawingThumbnail(doc, isOwn) {
 }
 
 // Download logic
-downloadDrawingBtn.addEventListener("click", () => {
+downloadDrawingBtn.addEventListener("click", async () => {
   // Create an offscreen canvas to combine image and text
   const offCanvas = document.createElement("canvas");
   offCanvas.width = drawingCanvas.width;
