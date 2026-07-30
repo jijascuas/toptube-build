@@ -1005,10 +1005,22 @@ body {
 .notes-list {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 15px;
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.notes-list::-webkit-scrollbar {
+  width: 6px;
+}
+.notes-list::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.1);
+}
+.notes-list::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.2);
+  border-radius: 4px;
 }
 
 .note-item {

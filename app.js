@@ -73,7 +73,7 @@ async function showBannerAd() {
       adId: BANNER_AD_ID,
       adSize: 'ADAPTIVE_BANNER',
       position: 'BOTTOM_CENTER',
-      margin: 60,
+      margin: 95,
       isTesting: false
     });
     console.log('Banner ad shown');
