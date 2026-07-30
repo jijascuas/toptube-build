@@ -814,7 +814,7 @@ function loadNotesForVideo(vidId, ownerId) {
   }
 
   const addNoteContainer = document.querySelector('.add-note-container');
-  if (currentUser && currentUser.id === ownerId) {
+  if (currentUser) {
     if (addNoteContainer) addNoteContainer.style.display = 'flex';
   } else {
     if (addNoteContainer) addNoteContainer.style.display = 'none';
