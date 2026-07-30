@@ -257,9 +257,7 @@
 
   <!-- Fullscreen Drawing Modal -->
   <div id="drawing-modal" class="hidden" style="position: fixed; inset: 0; background: var(--bg-color); z-index: 10001; display: flex;">
-    <button class="modal-close" id="drawing-close" style="position: absolute; top: 15px; left: 15px; z-index: 10002;"><i class="fa-solid fa-arrow-left"></i></button>
-    
-    <div id="drawing-owner-info" class="hidden" style="position: absolute; top: 15px; left: 70px; z-index: 10002; align-items: center; gap: 10px; background: rgba(0,0,0,0.6); padding: 5px 15px 5px 5px; border-radius: 25px;">
+    <div id="drawing-owner-info" class="hidden" style="position: absolute; top: 15px; left: 15px; z-index: 10002; align-items: center; gap: 10px; background: rgba(0,0,0,0.6); padding: 5px 15px 5px 5px; border-radius: 25px;">
       <img id="drawing-owner-avatar" src="" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
       <span id="drawing-owner-name" style="color: white; font-weight: bold; font-size: 0.9rem;"></span>
     </div>
@@ -272,6 +270,7 @@
 
     <!-- Right Margin Tools -->
     <div style="width: 80px; background: var(--surface-color); border-left: 1px solid var(--border-color); display: flex; flex-direction: column; align-items: center; padding: 20px 0; gap: 20px;">
+      <button id="drawing-close" class="btn-primary" style="background: #ef4444; border-color: #ef4444; padding: 10px; width: 50px; height: 50px; border-radius: 50%; display: flex; justify-content: center; align-items: center;" title="Exit"><i class="fa-solid fa-arrow-left"></i></button>
       <button id="save-drawing-btn" class="btn-primary" style="background: #3b82f6; border-color: #3b82f6; padding: 10px; width: 50px; height: 50px; border-radius: 50%; display: flex; justify-content: center; align-items: center;" title="Save"><i class="fa-solid fa-floppy-disk"></i></button>
       <button id="download-drawing-btn" class="btn-secondary" style="padding: 10px; width: 50px; height: 50px; border-radius: 50%; display: flex; justify-content: center; align-items: center;" title="Download PNG"><i class="fa-solid fa-download"></i></button>
       

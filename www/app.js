@@ -1736,14 +1736,28 @@ addDrawingBtn.addEventListener("click", async () => {
   }
 });
 
+window.addEventListener("popstate", async (e) => {
+  if (!drawingModal.classList.contains("hidden")) {
+    drawingModal.classList.add("hidden");
+    if (window.Capacitor && window.Capacitor.Plugins.ScreenOrientation) {
+      try { await window.Capacitor.Plugins.ScreenOrientation.unlock(); } catch (e) {}
+    }
+  }
+});
+
 drawingCloseBtn.addEventListener("click", async () => {
-  drawingModal.classList.add("hidden");
-  if (window.Capacitor && window.Capacitor.Plugins.ScreenOrientation) {
-    try { await window.Capacitor.Plugins.ScreenOrientation.unlock(); } catch (e) {}
+  if (history.state && history.state.modal === 'drawing') {
+    history.back(); // This will trigger the popstate event above
+  } else {
+    drawingModal.classList.add("hidden");
+    if (window.Capacitor && window.Capacitor.Plugins.ScreenOrientation) {
+      try { await window.Capacitor.Plugins.ScreenOrientation.unlock(); } catch (e) {}
+    }
   }
 });
 
 async function openDrawingModal(drawingDoc = null) {
+  history.pushState({ modal: 'drawing' }, 'Drawing');
   drawingModal.classList.remove("hidden");
   if (window.Capacitor && window.Capacitor.Plugins.ScreenOrientation) {
     try { await window.Capacitor.Plugins.ScreenOrientation.lock({ type: 'portrait' }); } catch (e) {}
