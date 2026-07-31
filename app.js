@@ -760,6 +760,7 @@ function openLinkInApp(url, platformId, isEmbeddable, ownerId = null) {
 
   loadNotesForVideo(vidId, ownerId);
   startNotesInterval();
+  loadDrawings();
 }
 
 learningCloseBtn.addEventListener('click', () => {
@@ -910,18 +911,31 @@ function renderNotes() {
     const isPublisherNote = note.authorId === currentVideoOwnerId;
     let publisherHeader = isPublisherNote ? `<div style="font-size: 0.7rem; color: #3b82f6; margin-bottom: 2px;"><i class="fa-solid fa-user-pen"></i> Publisher's annotation</div>` : '';
 
+    let drawingBtnHtml = '';
+    const drawingDocForAuthor = window.currentVideoDrawingsMap && window.currentVideoDrawingsMap[note.authorId];
+    if (drawingDocForAuthor) {
+      drawingBtnHtml = `
+        <button class="view-drawing-tab-btn" data-author="${note.authorId}" style="background: #eab308; border: none; color: #0f172a; cursor: pointer; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; display: inline-flex; align-items: center; gap: 4px;" title="View Draw">
+          <i class="fa-solid fa-paintbrush"></i> Draw
+        </button>
+      `;
+    }
+
     div.innerHTML = `
       <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 15px;">
         <img src="${note.authorAvatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #334155; flex-shrink: 0; margin-top: ${isPublisherNote ? '16px' : '2px'};">
         <div style="flex-grow: 1; display: flex; flex-direction: column;">
           ${publisherHeader}
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
               <span style="font-size: 0.85rem; color: #f8fafc; font-weight: 600;">${note.authorName || 'User'}</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span class="note-time" data-time="${note.time}" style="font-size: 0.75rem; color: #3b82f6; cursor: pointer; background: rgba(59, 130, 246, 0.1); padding: 2px 6px; border-radius: 4px;"><i class="fa-solid fa-play"></i> ${formatTime(note.time)}</span>
-              ${deleteBtnHtml}
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="note-time" data-time="${note.time}" style="font-size: 0.75rem; color: #3b82f6; cursor: pointer; background: rgba(59, 130, 246, 0.1); padding: 2px 6px; border-radius: 4px;"><i class="fa-solid fa-play"></i> ${formatTime(note.time)}</span>
+                ${deleteBtnHtml}
+              </div>
+              ${drawingBtnHtml}
             </div>
           </div>
           <div class="note-text" style="font-size: 0.95rem; line-height: 1.4; color: #cbd5e1; margin-bottom: 8px;">${note.text}</div>
@@ -933,6 +947,7 @@ function renderNotes() {
         </div>
       </div>
     `;
+
     notesList.appendChild(div);
   });
 
@@ -985,6 +1000,15 @@ function renderNotes() {
         localStorage.setItem(`notes_${currentVideoOwnerId}_${currentVideoId}`, JSON.stringify(currentNotes));
       }
       renderNotes();
+    });
+  });
+
+  document.querySelectorAll('.view-drawing-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const authorId = btn.dataset.author;
+      if (window.currentVideoDrawingsMap && window.currentVideoDrawingsMap[authorId]) {
+        openDrawingModal(window.currentVideoDrawingsMap[authorId]);
+      }
     });
   });
 
@@ -1746,6 +1770,7 @@ const canvasContainer = document.getElementById("canvas-container");
 const drawingTextLayer = document.getElementById("drawing-text-layer");
 
 const saveDrawingBtn = document.getElementById("save-drawing-btn");
+const deleteDrawingBtn = document.getElementById("delete-drawing-btn");
 const downloadDrawingBtn = document.getElementById("download-drawing-btn");
 const drawingColorInput = document.getElementById("drawing-color");
 const drawingThicknessInput = document.getElementById("drawing-thickness");
@@ -1887,6 +1912,7 @@ async function openDrawingModal(drawingDoc = null) {
   drawingThicknessInput.disabled = false;
   addTextBtn.disabled = false;
   saveDrawingBtn.style.display = "flex";
+  if (deleteDrawingBtn) deleteDrawingBtn.classList.add("hidden");
 
   if (drawingDoc) {
     currentDrawingDocId = drawingDoc.id;
@@ -1922,6 +1948,10 @@ async function openDrawingModal(drawingDoc = null) {
 
     // Check if own drawing
     const isOwn = currentUser && data.userId === currentUser.id;
+    if (isOwn) {
+      if (deleteDrawingBtn) deleteDrawingBtn.classList.remove("hidden");
+    }
+    
     if (!isOwn) {
       // View only mode
       drawingCanvas.style.pointerEvents = "none";
@@ -2293,6 +2323,36 @@ saveDrawingBtn.addEventListener("click", async () => {
   }
 });
 
+  if (deleteDrawingBtn) {
+    deleteDrawingBtn.addEventListener("click", async () => {
+      if (!currentDrawingDocId) return;
+      if (!confirm("Are you sure you want to delete this drawing permanently?")) return;
+      
+      try {
+        deleteDrawingBtn.disabled = true;
+        await db.collection("drawings").doc(currentDrawingDocId).delete();
+        // Also remove from local map if present
+        if (window.currentVideoDrawingsMap) {
+          for (const key in window.currentVideoDrawingsMap) {
+            if (window.currentVideoDrawingsMap[key].id === currentDrawingDocId) {
+              delete window.currentVideoDrawingsMap[key];
+              break;
+            }
+          }
+        }
+        drawingModal.classList.add("hidden");
+        loadDrawings();
+        renderNotes(currentVideoOwnerId, currentVideoId); // Update notes UI
+        alert("Drawing deleted.");
+      } catch (e) {
+        console.error("Error deleting drawing:", e);
+        alert("Failed to delete drawing.");
+      } finally {
+        deleteDrawingBtn.disabled = false;
+      }
+    });
+  }
+
 // Load drawings
 function loadDrawings() {
   if (!currentVideoId) return;
@@ -2301,16 +2361,18 @@ function loadDrawings() {
   db.collection("drawings").where("videoKey", "==", currentVideoOwnerId + "_" + currentVideoId).get()
     .then(snapshot => {
       drawingsList.innerHTML = "";
+      window.currentVideoDrawingsMap = {};
       
       if (snapshot.empty) {
         drawingsList.innerHTML = `<p style="color: #94a3b8; font-size: 0.9rem; grid-column: 1 / -1;">No drawings yet.</p>`;
+        if (typeof renderNotes === 'function') renderNotes();
         return;
       }
       
       let ownDrawingDoc = null;
       ownDrawingDocGlobal = null;
       const otherDrawings = [];
-      
+
       const datalist = document.getElementById("drawings-search-list");
       if (datalist) datalist.innerHTML = "";
 
@@ -2321,6 +2383,8 @@ function loadDrawings() {
           opt.value = data.userName;
           datalist.appendChild(opt);
         }
+        
+        window.currentVideoDrawingsMap[data.userId] = doc;
         
         if (currentUser && data.userId === currentUser.id) {
           ownDrawingDoc = doc;
@@ -2339,6 +2403,11 @@ function loadDrawings() {
         otherDrawings.forEach(doc => renderDrawingThumbnail(doc, false));
       } catch (e) {
         drawingsList.innerHTML = `<p style="color: red; grid-column: 1 / -1;">Render Error: ${e.message}</p>`;
+      }
+      
+      // Re-render notes to show drawing buttons
+      if (typeof renderNotes === 'function') {
+        renderNotes();
       }
     })
     .catch(error => {
