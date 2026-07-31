@@ -879,9 +879,13 @@ function renderNotes() {
     return;
   }
   
-  // Sort notes: pinned first, then by likes count, then by time
+  // Sort notes: publisher annotations first (by time), then by likes count, then by time
   currentNotes.sort((a, b) => {
-    if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
+    const isAPublisher = a.authorId === currentVideoOwnerId;
+    const isBPublisher = b.authorId === currentVideoOwnerId;
+    if (isAPublisher && !isBPublisher) return -1;
+    if (!isAPublisher && isBPublisher) return 1;
+    if (isAPublisher && isBPublisher) return a.time - b.time;
     const aLikes = a.likedBy ? a.likedBy.length : 0;
     const bLikes = b.likedBy ? b.likedBy.length : 0;
     if (aLikes !== bLikes) return bLikes - aLikes;
@@ -903,33 +907,28 @@ function renderNotes() {
     const likesCount = note.likedBy ? note.likedBy.length : 0;
     const hasLiked = currentUser && note.likedBy && note.likedBy.includes(currentUser.id);
 
-    let pinBtnHtml = '';
-    if (isVideoOwner && isNoteAuthor) {
-      pinBtnHtml = `<button class="pin-note-btn" data-index="${index}" style="background: none; border: none; color: ${note.isPinned ? '#f59e0b' : '#94a3b8'}; cursor: pointer; padding: 0; font-size: 0.85rem; display: flex; align-items: center; gap: 4px;" title="${note.isPinned ? 'Unpin' : 'Pin to top'}">
-        <i class="fa-solid fa-thumbtack"></i> ${note.isPinned ? 'Pinned' : 'Pin'}
-      </button>`;
-    }
-    
-    let pinnedHeader = note.isPinned ? `<div style="font-size: 0.7rem; color: #f59e0b; margin-bottom: 2px;"><i class="fa-solid fa-thumbtack"></i> Pinned by owner</div>` : '';
+    const isPublisherNote = note.authorId === currentVideoOwnerId;
+    let publisherHeader = isPublisherNote ? `<div style="font-size: 0.7rem; color: #3b82f6; margin-bottom: 2px;"><i class="fa-solid fa-user-pen"></i> Publisher's annotation</div>` : '';
 
     div.innerHTML = `
       <div style="display: flex; align-items: flex-start; gap: 12px; margin-bottom: 15px;">
-        <img src="${note.authorAvatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #334155; flex-shrink: 0; margin-top: ${note.isPinned ? '16px' : '2px'};">
+        <img src="${note.authorAvatar || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'}" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #334155; flex-shrink: 0; margin-top: ${isPublisherNote ? '16px' : '2px'};">
         <div style="flex-grow: 1; display: flex; flex-direction: column;">
-          ${pinnedHeader}
+          ${publisherHeader}
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="font-size: 0.85rem; color: #f8fafc; font-weight: 600;">${note.authorName || 'User'}</span>
-              <span class="note-time" data-time="${note.time}" style="font-size: 0.75rem; color: #3b82f6; cursor: pointer; background: rgba(59, 130, 246, 0.1); padding: 2px 6px; border-radius: 4px;"><i class="fa-solid fa-play"></i> ${formatTime(note.time)}</span>
             </div>
-            ${deleteBtnHtml}
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="note-time" data-time="${note.time}" style="font-size: 0.75rem; color: #3b82f6; cursor: pointer; background: rgba(59, 130, 246, 0.1); padding: 2px 6px; border-radius: 4px;"><i class="fa-solid fa-play"></i> ${formatTime(note.time)}</span>
+              ${deleteBtnHtml}
+            </div>
           </div>
           <div class="note-text" style="font-size: 0.95rem; line-height: 1.4; color: #cbd5e1; margin-bottom: 8px;">${note.text}</div>
           <div style="display: flex; align-items: center; gap: 15px;">
             <button class="like-note-btn" data-index="${index}" style="background: none; border: none; color: ${hasLiked ? '#3b82f6' : '#94a3b8'}; cursor: pointer; padding: 0; font-size: 0.85rem; display: flex; align-items: center; gap: 4px;" title="Like">
               <i class="${hasLiked ? 'fa-solid' : 'fa-regular'} fa-thumbs-up"></i> ${likesCount}
             </button>
-            ${pinBtnHtml}
           </div>
         </div>
       </div>
@@ -989,27 +988,7 @@ function renderNotes() {
     });
   });
 
-  document.querySelectorAll('.pin-note-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const idx = e.currentTarget.getAttribute('data-index');
-      const note = currentNotes[idx];
-      const currentlyPinned = !!note.isPinned;
-      
-      // Unpin all notes
-      currentNotes.forEach(n => n.isPinned = false);
-      
-      // Toggle this note
-      note.isPinned = !currentlyPinned;
-      
-      if (currentVideoId && currentVideoOwnerId) {
-        db.collection('users').doc(currentVideoOwnerId).collection('notes').doc(currentVideoId)
-          .set({ notes: currentNotes }, { merge: true })
-          .catch(console.error);
-        localStorage.setItem(`notes_${currentVideoOwnerId}_${currentVideoId}`, JSON.stringify(currentNotes));
-      }
-      renderNotes();
-    });
-  });
+  // Pinning removed
 }
 
 saveNoteBtn.addEventListener('click', () => {
