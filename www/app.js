@@ -28,9 +28,9 @@ setInterval(() => {
 
   if (isPlaying) {
     videoViewingTimeMs += 1000;
-    if (videoViewingTimeMs >= 3 * 60 * 1000) { // 3 minutes
-      showInterstitialAd();
-    }
+    // if (videoViewingTimeMs >= 3 * 60 * 1000) { // 3 minutes
+    //   showInterstitialAd();
+    // }
   }
 }, 1000);
 
