@@ -292,7 +292,7 @@ body {
   bottom: 0;
   left: 0;
   right: 0;
-  height: var(--bottom-nav-height);
+  height: calc(var(--bottom-nav-height) + var(--safe-bottom));
   background: rgba(15, 23, 42, 0.98);
   backdrop-filter: var(--glass-blur);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -318,6 +318,7 @@ body {
   padding: 6px 12px;
   min-width: 60px;
   font-family: 'Inter', sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .nav-item i {
