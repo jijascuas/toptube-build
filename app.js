@@ -1790,6 +1790,9 @@ drawTabBtn.addEventListener("click", () => {
     } else {
       addDrawingBtn.classList.add("hidden");
     }
+    setTimeout(() => {
+      drawingsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   }
 });
 
